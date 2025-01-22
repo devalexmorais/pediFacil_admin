@@ -1,0 +1,12 @@
+.content {
+  margin-left: 240px;
+  min-height: 100vh;
+  padding: 10px;
+  background-color: #f5f6fa;
+}
+
+.content-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 10px;
+} 
