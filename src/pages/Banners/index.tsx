@@ -1,30 +1,12 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { getMainCategories, Category } from '../../services/categoryServices';
+import { createBanner, getAllBanners, deleteBanner, Banner } from '../../services/bannerServices';
 import './styles.css';
-
-interface MainCategory {
-  id: string;
-  name: string;
-  description: string | null;
-  icon: string;
-  isActive: boolean;
-  createdAt: string;
-  createdByAdminId: string;
-}
-
-interface Banner {
-  id: string;
-  title: string;
-  image: string;
-  mainCategoryId: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-  mainCategory: MainCategory;
-}
 
 const Banners = () => {
   const [banners, setBanners] = useState<Banner[]>([]);
-  const [categories, setCategories] = useState<MainCategory[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -33,7 +15,6 @@ const Banners = () => {
     mainCategoryId: '',
     image: null as File | null,
   });
-  const API_URL = 'http://localhost:8080';
 
   useEffect(() => {
     loadBanners();
@@ -44,25 +25,9 @@ const Banners = () => {
     try {
       setLoading(true);
       setError('');
-      const token = localStorage.getItem('@AdminApp:token');
       
-      if (!token) {
-        throw new Error('Token não encontrado');
-      }
-
-      const response = await fetch(`${API_URL}/api/admin/banners`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Erro ao carregar banners');
-      }
-
-      const data = await response.json();
-      setBanners(Array.isArray(data) ? data : [data]);
+      const data = await getAllBanners();
+      setBanners(data);
     } catch (err: any) {
       setError(err.message || 'Erro ao carregar banners');
     } finally {
@@ -72,27 +37,15 @@ const Banners = () => {
 
   const loadCategories = async () => {
     try {
-      const token = localStorage.getItem('@AdminApp:token');
-      
-      if (!token) {
-        throw new Error('Token não encontrado');
-      }
-
-      const response = await fetch(`${API_URL}/api/admin/categories`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Erro ao carregar categorias');
-      }
-
-      const data = await response.json();
+      setCategoriesLoading(true);
+      const data = await getMainCategories();
+      console.log('Categorias carregadas:', data);
       setCategories(data);
     } catch (err: any) {
-      console.error('Erro ao carregar categorias:', err);
+      console.error('Erro completo ao carregar categorias:', err);
+      setError(`Falha ao carregar categorias: ${err.message}`);
+    } finally {
+      setCategoriesLoading(false);
     }
   };
 
@@ -101,48 +54,16 @@ const Banners = () => {
     
     try {
       setError('');
-      const token = localStorage.getItem('@AdminApp:token');
-      
-      console.log('Token:', token);
-      console.log('Dados do banner:', {
-        title: newBanner.title,
-        mainCategoryId: newBanner.mainCategoryId,
-        image: newBanner.image
-      });
-
-      if (!token) {
-        throw new Error('Token não encontrado');
-      }
 
       if (!newBanner.image) {
         throw new Error('Selecione uma imagem para o banner');
       }
 
-      const formData = new FormData();
-      formData.append('title', newBanner.title);
-      formData.append('mainCategoryId', newBanner.mainCategoryId);
-      formData.append('image', newBanner.image);
-
-      console.log('FormData criado:', {
-        title: formData.get('title'),
-        mainCategoryId: formData.get('mainCategoryId'),
-        image: formData.get('image')
+      await createBanner({
+        title: newBanner.title,
+        mainCategoryId: newBanner.mainCategoryId,
+        image: newBanner.image
       });
-
-      const response = await fetch(`${API_URL}/api/admin/banners`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
-
-      const data = await response.json();
-      console.log('Resposta da API:', data);
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Erro ao criar banner');
-      }
 
       await loadBanners();
       setIsModalOpen(false);
@@ -160,25 +81,7 @@ const Banners = () => {
 
     try {
       setError('');
-      const token = localStorage.getItem('@AdminApp:token');
-      
-      if (!token) {
-        throw new Error('Token não encontrado');
-      }
-
-      const response = await fetch(`${API_URL}/api/admin/banners/${bannerId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Erro ao excluir banner');
-      }
-
+      await deleteBanner(bannerId);
       await loadBanners();
     } catch (err: any) {
       setError(err.message || 'Erro ao excluir banner');
@@ -225,13 +128,13 @@ const Banners = () => {
         {banners.map((banner) => (
           <div key={banner.id} className="banner-card">
             <img 
-              src={`${API_URL}${banner.image}`} 
+              src={banner.image}
               alt={banner.title} 
               className="banner-image"
             />
             <div className="banner-info">
               <h3>{banner.title}</h3>
-              <p>Categoria: {banner.mainCategory.name}</p>
+              <p>Categoria: {categories.find(c => c.id === banner.mainCategoryId)?.name || 'Categoria não encontrada'}</p>
               <span className={`status-badge ${banner.isActive ? 'active' : 'inactive'}`}>
                 {banner.isActive ? 'Ativo' : 'Inativo'}
               </span>
@@ -287,16 +190,19 @@ const Banners = () => {
                   required
                 />
               </div>
-              <div className="modal-actions">
+              <div className="modal-footer">
+                <button type="submit" className="save-button">
+                  Salvar
+                </button>
                 <button 
                   type="button" 
                   className="cancel-button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setNewBanner({ title: '', mainCategoryId: '', image: null });
+                  }}
                 >
                   Cancelar
-                </button>
-                <button type="submit" className="submit-button">
-                  Adicionar
                 </button>
               </div>
             </form>

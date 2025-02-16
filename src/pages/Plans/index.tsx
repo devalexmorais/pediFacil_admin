@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './styles.css';
+import { db } from '../../config/firebase';
+import { collection, getDocs, addDoc, Timestamp, query, orderBy, doc, updateDoc } from 'firebase/firestore';
 
 interface PlanFeatures {
   support: string;
@@ -55,20 +57,20 @@ const Plans: React.FC = () => {
     }
   });
 
-  const getToken = () => localStorage.getItem('@AdminApp:token');
-
   const fetchPlans = async () => {
     try {
-      const token = getToken();
-      const response = await fetch('http://localhost:8080/api/subscriptions/admin/plans', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Erro ao buscar planos');
-      const data = await response.json();
-      setPlans(data);
+      const plansRef = collection(db, 'plans');
+      const q = query(plansRef, orderBy('createdAt', 'desc'));
+      const querySnapshot = await getDocs(q);
+      
+      const plansData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate().toISOString() || new Date().toISOString(),
+        updatedAt: doc.data().updatedAt?.toDate().toISOString() || new Date().toISOString()
+      })) as Plan[];
+      
+      setPlans(plansData);
     } catch (error) {
       console.error('Erro ao buscar planos:', error);
       alert('Erro ao carregar planos disponíveis');
@@ -79,17 +81,17 @@ const Plans: React.FC = () => {
 
   const handleCreatePlan = async () => {
     try {
-      const token = getToken();
-      const response = await fetch('http://localhost:8080/api/subscriptions/admin/plans', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      });
+      const plansRef = collection(db, 'plans');
+      const now = Timestamp.now();
+      
+      const planData = {
+        ...formData,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now
+      };
 
-      if (!response.ok) throw new Error('Erro ao criar plano');
+      await addDoc(plansRef, planData);
       await fetchPlans();
       setShowModal(false);
       resetForm();
@@ -103,17 +105,15 @@ const Plans: React.FC = () => {
     if (!editingPlan) return;
 
     try {
-      const token = getToken();
-      const response = await fetch(`http://localhost:8080/api/subscriptions/admin/plans/${editingPlan.id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      });
+      const planRef = doc(db, 'plans', editingPlan.id);
+      const now = Timestamp.now();
+      
+      const planData = {
+        ...formData,
+        updatedAt: now
+      };
 
-      if (!response.ok) throw new Error('Erro ao atualizar plano');
+      await updateDoc(planRef, planData);
       await fetchPlans();
       setShowModal(false);
       setEditingPlan(null);
@@ -126,15 +126,11 @@ const Plans: React.FC = () => {
 
   const handleTogglePlanStatus = async (planId: string) => {
     try {
-      const token = getToken();
-      const response = await fetch(`http://localhost:8080/api/subscriptions/admin/plans/${planId}/toggle`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const planRef = doc(db, 'plans', planId);
+      
+      await updateDoc(planRef, {
+        isActive: !plans.find(plan => plan.id === planId)?.isActive
       });
-
-      if (!response.ok) throw new Error('Erro ao alterar status do plano');
       await fetchPlans();
     } catch (error) {
       console.error('Erro ao alterar status do plano:', error);
@@ -485,4 +481,4 @@ const Plans: React.FC = () => {
   );
 };
 
-export default Plans; 
+export default Plans;

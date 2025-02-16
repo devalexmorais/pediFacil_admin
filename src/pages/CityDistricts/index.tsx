@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { getDistrictsByCity, createDistrict, deleteDistrict } from '../../services/firebaseServices';
 import './styles.css';
 
 interface District {
   id: string;
-  cityId: string;
   name: string;
+  cityId: string;
+  isActive: boolean;
 }
 
 const CityDistricts = () => {
@@ -20,36 +22,26 @@ const CityDistricts = () => {
     cityId: cityId || ''
   });
   const [districtError, setDistrictError] = useState('');
-  const API_URL = 'http://localhost:8080';
 
   useEffect(() => {
-    loadDistricts();
+    if (cityId) {
+      loadDistricts();
+    }
   }, [cityId]);
 
   const loadDistricts = async () => {
     try {
       setLoading(true);
       setError('');
-      const token = localStorage.getItem('@AdminApp:token');
       
-      if (!token) {
-        throw new Error('Token não encontrado');
+      if (!cityId) {
+        throw new Error('ID da cidade não fornecido');
       }
 
-      const response = await fetch(`${API_URL}/api/location/districts?cityId=${cityId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.message || 'Erro ao carregar bairros');
-      }
-
-      const data = await response.json();
-      setDistricts(Array.isArray(data) ? data : []);
+      console.log('Buscando bairros para a cidade:', cityId);
+      const districtsList = await getDistrictsByCity(cityId);
+      console.log('Bairros encontrados:', districtsList);
+      setDistricts(districtsList);
     } catch (err: any) {
       console.error('Erro ao carregar bairros:', err);
       setError(err.message || 'Erro ao carregar bairros');
@@ -63,34 +55,25 @@ const CityDistricts = () => {
     
     try {
       setDistrictError('');
-      const token = localStorage.getItem('@AdminApp:token');
       
-      if (!token) {
-        throw new Error('Token não encontrado');
+      if (!cityId) {
+        throw new Error('ID da cidade não fornecido');
       }
 
-      const response = await fetch(`${API_URL}/api/location/districts`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(newDistrict)
+      const districtId = await createDistrict({
+        name: newDistrict.name,
+        cityId: cityId
       });
 
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Erro ao criar bairro');
-      }
-
+      console.log('Bairro criado com sucesso. ID:', districtId);
       await loadDistricts();
       setIsDistrictModalOpen(false);
       setNewDistrict({
         name: '',
-        cityId: cityId || ''
+        cityId: cityId
       });
     } catch (err: any) {
+      console.error('Erro ao criar bairro:', err);
       setDistrictError(err.message || 'Erro ao criar bairro');
     }
   };
@@ -102,31 +85,11 @@ const CityDistricts = () => {
 
     try {
       setDistrictError('');
-      const token = localStorage.getItem('@AdminApp:token');
-      
-      if (!token) {
-        throw new Error('Token não encontrado');
-      }
-
-      const response = await fetch(`${API_URL}/api/location/districts/${districtId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        if (data.error) {
-          throw new Error(data.error);
-        }
-        throw new Error('Erro ao excluir bairro');
-      }
-
+      await deleteDistrict(districtId);
+      console.log('Bairro excluído com sucesso');
       await loadDistricts();
     } catch (err: any) {
-      console.error('Erro completo:', err);
+      console.error('Erro ao excluir bairro:', err);
       setDistrictError(err.message || 'Erro ao excluir bairro');
     }
   };
@@ -177,7 +140,7 @@ const CityDistricts = () => {
         </div>
       )}
 
-      <section className="content-section">
+      <section>
         <header className="section-header">
           <h2>Lista de Bairros</h2>
           <span className="total-count">{districts.length} bairros</span>

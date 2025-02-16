@@ -1,4 +1,6 @@
 import { useState, ChangeEvent, useEffect } from 'react';
+import { db } from '../../config/firebase';
+import { collection, addDoc, getDocs, query, orderBy, Timestamp, where } from 'firebase/firestore';
 import './styles.css';
 
 interface Recipient {
@@ -56,27 +58,17 @@ const Notifications = () => {
 
   const fetchCoupons = async () => {
     try {
-      const token = localStorage.getItem('@AdminApp:token');
-      console.log('Token para buscar cupons:', token);
-
-      const response = await fetch('http://localhost:8080/api/coupon/all', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const couponsRef = collection(db, 'coupons');
+      const q = query(couponsRef, where('isActive', '==', true));
+      const querySnapshot = await getDocs(q);
       
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Cupons recebidos:', data);
-        // Filtra apenas cupons ativos
-        const activeCoupons = data.filter((coupon: Coupon) => coupon.isActive);
-        console.log('Cupons ativos:', activeCoupons);
-        setCoupons(activeCoupons);
-      } else {
-        const errorData = await response.json();
-        console.error('Erro ao buscar cupons:', errorData);
-        console.error('Status:', response.status);
-      }
+      const activeCoupons = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Coupon[];
+      
+      console.log('Cupons ativos:', activeCoupons);
+      setCoupons(activeCoupons);
     } catch (error) {
       console.error('Erro ao buscar cupons:', error);
     }
@@ -89,24 +81,22 @@ const Notifications = () => {
 
   const fetchNotifications = async () => {
     try {
-      const token = localStorage.getItem('@AdminApp:token');
-      console.log('Token recuperado:', token);
+      const notificationsRef = collection(db, 'notifications');
+      const q = query(notificationsRef, orderBy('createdAt', 'desc'));
+      const querySnapshot = await getDocs(q);
+      
+      const notificationsData = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate().toISOString() || new Date().toISOString(),
+          updatedAt: data.updatedAt?.toDate().toISOString() || new Date().toISOString()
+        };
+      }) as Notification[];
 
-      const response = await fetch('http://localhost:8080/api/notifications', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const data: ApiResponse = await response.json();
-        console.log('Dados recebidos da API:', data);
-        setNotifications(data.notifications);
-      } else {
-        const errorData = await response.json();
-        console.error('Erro da API:', errorData);
-        console.error('Status:', response.status);
-      }
+      console.log('Notificações recebidas:', notificationsData);
+      setNotifications(notificationsData);
     } catch (error) {
       console.error('Erro ao buscar notificações:', error);
     }
@@ -128,42 +118,42 @@ const Notifications = () => {
 
   const handleSubmit = async () => {
     try {
-      const token = localStorage.getItem('@AdminApp:token');
-      const response = await fetch('http://localhost:8080/api/notifications/by-type', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          userType: formData.userType,
-          title: formData.title,
-          message: formData.message,
-          type: formData.type,
-          couponCode: formData.couponCode || undefined
-        })
+      const notificationsRef = collection(db, 'notifications');
+      const now = Timestamp.now();
+      
+      const notificationData = {
+        title: formData.title,
+        message: formData.message,
+        type: formData.type,
+        recipientType: formData.userType,
+        couponCode: formData.couponCode || null,
+        read: false,
+        createdAt: now,
+        updatedAt: now,
+        recipient: {
+          id: 'all',
+          name: formData.userType === 'CUSTOMER' ? 'Todos os Clientes' : 'Todos os Vendedores',
+          email: 'all'
+        }
+      };
+
+      await addDoc(notificationsRef, notificationData);
+      alert('Notificação enviada com sucesso!');
+      
+      setFormData({
+        userType: 'CUSTOMER',
+        title: '',
+        message: '',
+        type: 'PROMOTION',
+        couponCode: ''
       });
 
-      if (response.ok) {
-        alert('Notificação enviada com sucesso!');
-        setFormData({
-          userType: 'CUSTOMER',
-          title: '',
-          message: '',
-          type: 'PROMOTION',
-          couponCode: ''
-        });
-        // Atualiza a lista de notificações se estiver na aba de histórico
-        if (selectedTab === 'history') {
-          fetchNotifications();
-        }
-      } else {
-        const errorData = await response.json();
-        alert(`Erro ao enviar notificação: ${errorData.message || 'Erro desconhecido'}`);
+      if (selectedTab === 'history') {
+        fetchNotifications();
       }
     } catch (error) {
       console.error('Erro:', error);
-      alert('Erro ao enviar notificação: Erro de conexão');
+      alert('Erro ao enviar notificação');
     }
   };
 
@@ -348,4 +338,4 @@ const Notifications = () => {
   );
 };
 
-export default Notifications; 
+export default Notifications;

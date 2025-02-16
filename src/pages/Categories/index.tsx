@@ -2,28 +2,17 @@ import { useState, useEffect } from 'react';
 import CategoryModal from '../../components/CategoryModal';
 import SubcategoryModal from '../../components/SubcategoryModal';
 import ErrorNotification from '../../components/ErrorNotification';
-import axios from 'axios';
+import { 
+  getAllCategories, 
+  createCategory, 
+  updateCategory, 
+  deleteCategory,
+  getSubcategories,
+  Category,
+  createSubcategory
+} from '../../services/categoryServices';
 import './styles.css';
 
-interface Category {
-  id: string;
-  name: string;
-  image: string;
-  isActive: boolean;
-  createdAt: string;
-  _count?: {
-    sellers: number;
-    subCategories: number;
-  };
-}
-
-interface Subcategory {
-  id: string;
-  name: string;
-  isActive: boolean;
-  mainCategoryId: string;
-  createdAt: string;
-}
 
 const Categories = () => {
   const [searchText, setSearchText] = useState('');
@@ -33,88 +22,40 @@ const Categories = () => {
   const [isSubcategoryModalOpen, setIsSubcategoryModalOpen] = useState(false);
   const [categoryToEdit, setCategoryToEdit] = useState<Category | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
-  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+  const [subcategoriesCount, setSubcategoriesCount] = useState<{ [key: string]: number }>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<{ title: string; message: string } | null>(null);
 
-  // Pegar o token do localStorage
-  const getAuthHeader = () => {
-    const token = localStorage.getItem('@AdminApp:token');
-    if (!token) {
-      console.error('Token de acesso não encontrado');
-      return {};
-    }
-    console.log('Token encontrado (Categories):', token);
-    return {
-      Authorization: `Bearer ${token}`
-    };
-  };
-
   const fetchCategories = async () => {
     try {
-      const response = await axios.get('http://localhost:8080/api/admin/categories', {
-        headers: getAuthHeader()
-      });
-      setCategories(response.data);
+      console.log('Buscando categorias...');
+      const categoriesList = await getAllCategories();
+      console.log('Categorias encontradas:', categoriesList);
+      setCategories(categoriesList);
+      
+      // Buscar contagem de subcategorias para cada categoria
+      for (const category of categoriesList) {
+        const subcategoriesList = await getSubcategories(category.id);
+        setSubcategoriesCount(prev => ({
+          ...prev,
+          [category.id]: subcategoriesList.length
+        }));
+      }
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message;
+      console.error('Erro ao buscar categorias:', error);
       setError({
         title: 'Erro ao buscar categorias',
-        message: errorMessage
+        message: error.message
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const fetchSubcategories = async (categoryId: string) => {
-    try {
-      const response = await axios.get(`http://localhost:8080/api/admin/subcategories?mainCategoryId=${categoryId}`, {
-        headers: getAuthHeader()
-      });
-      setSubcategories(response.data);
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message;
-      setError({
-        title: 'Erro ao buscar subcategorias',
-        message: errorMessage
-      });
-    }
-  };
-
-  // Atualização automática
   useEffect(() => {
-    // Primeira chamada ao montar o componente
     fetchCategories();
+  }, []);
 
-    // Configura o intervalo de atualização (a cada 5 segundos)
-    const intervalId = setInterval(() => {
-      fetchCategories();
-    }, 5000);
-
-    // Limpa o intervalo quando o componente é desmontado
-    return () => clearInterval(intervalId);
-  }, []); // Array vazio significa que só executa ao montar o componente
-
-  // Atualização quando houver mudanças nas subcategorias
-  useEffect(() => {
-    if (selectedCategory) {
-      fetchSubcategories(selectedCategory.id);
-    }
-  }, [selectedCategory]);
-
-  // Atualização quando o modal de subcategorias estiver aberto
-  useEffect(() => {
-    if (isSubcategoryModalOpen && selectedCategory) {
-      const intervalId = setInterval(() => {
-        fetchSubcategories(selectedCategory.id);
-      }, 5000);
-
-      return () => clearInterval(intervalId);
-    }
-  }, [isSubcategoryModalOpen, selectedCategory]);
-
-  // Filtra as categorias
   const filteredCategories = categories.filter(category => {
     const matchSearch = !searchText || category.name.toLowerCase().includes(searchText.toLowerCase());
     const matchStatus = !selectedStatus || selectedStatus === 'Todos os status' || 
@@ -134,26 +75,15 @@ const Categories = () => {
 
   const handleToggleStatus = async (categoryId: string) => {
     try {
-      const response = await axios.patch(
-        `http://localhost:8080/api/admin/categories/${categoryId}/toggle`,
-        null,
-        {
-          headers: getAuthHeader()
-        }
-      );
+      const category = categories.find(c => c.id === categoryId);
+      if (!category) return;
 
-      // Atualiza a lista de categorias
+      await updateCategory(categoryId, { isActive: !category.isActive });
       await fetchCategories();
-
-      // Mostra mensagem de sucesso
-      setError({
-        title: 'Sucesso',
-        message: response.data.message
-      });
     } catch (error: any) {
       setError({
         title: 'Erro ao atualizar status da categoria',
-        message: extractErrorMessage(error)
+        message: error.message
       });
     }
   };
@@ -161,128 +91,45 @@ const Categories = () => {
   const handleDeleteCategory = async (categoryId: string) => {
     if (window.confirm('Tem certeza que deseja excluir esta categoria?')) {
       try {
-        await axios.delete(`http://localhost:8080/api/admin/categories/${categoryId}`, {
-          headers: getAuthHeader()
-        });
+        await deleteCategory(categoryId);
         await fetchCategories();
       } catch (error: any) {
-        const errorMessage = error.response?.data?.message || error.message;
         setError({
           title: 'Erro ao excluir categoria',
-          message: errorMessage
+          message: error.message
         });
       }
     }
   };
 
-  const extractErrorMessage = (error: any): string => {
-    console.log('Erro completo:', error);
-    console.log('Response data:', error.response?.data);
-    
-    const errorData = error.response?.data;
-    
-    // Se não houver dados na resposta, retorna a mensagem do erro
-    if (!errorData) {
-      return error.message || 'Erro desconhecido';
-    }
-
-    // Se for uma string direta
-    if (typeof errorData === 'string') {
-      return errorData;
-    }
-
-    // Se tiver uma mensagem direta no objeto
-    if (errorData.message) {
-      return errorData.message;
-    }
-
-    // Se tiver um erro do Prisma
-    if (errorData.error) {
-      if (typeof errorData.error === 'object') {
-        // Erro do Prisma com mensagem
-        if (errorData.error.message) {
-          return errorData.error.message;
-        }
-        // Erro do Prisma com meta informações
-        if (errorData.error.meta?.cause) {
-          return errorData.error.meta.cause;
-        }
-      }
-      return errorData.error.toString();
-    }
-
-    // Se for um array de erros
-    if (Array.isArray(errorData)) {
-      return errorData.map(err => {
-        if (typeof err === 'string') return err;
-        if (err.message) return err.message;
-        if (err.error) return err.error;
-        return JSON.stringify(err);
-      }).join(', ');
-    }
-
-    // Se tiver detalhes do erro
-    if (errorData.details) {
-      return errorData.details;
-    }
-
-    // Se tiver uma causa específica
-    if (errorData.cause) {
-      return errorData.cause;
-    }
-
-    // Se for um objeto com mensagem aninhada
-    if (errorData.error?.message) {
-      return errorData.error.message;
-    }
-
-    // Se nada mais funcionar, converte o objeto para string
-    return JSON.stringify(errorData);
-  };
-
-  const handleSaveCategory = async (formData: FormData) => {
+  const handleSaveCategory = async (categoryData: any) => {
     try {
+      console.log('Dados da categoria a serem salvos:', categoryData);
+      
       if (categoryToEdit) {
-        await axios.put(
-          `http://localhost:8080/api/admin/categories/${categoryToEdit.id}`, 
-          formData,
-          {
-            headers: {
-              ...getAuthHeader(),
-              'Content-Type': 'multipart/form-data',
-            },
-          }
-        );
+        await updateCategory(categoryToEdit.id, categoryData);
       } else {
-        await axios.post(
-          'http://localhost:8080/api/admin/categories', 
-          formData,
-          {
-            headers: {
-              ...getAuthHeader(),
-              'Content-Type': 'multipart/form-data',
-            },
-          }
-        );
+        await createCategory(categoryData);
       }
+      
       await fetchCategories();
       setIsModalOpen(false);
       setCategoryToEdit(null);
     } catch (error: any) {
+      console.error('Erro ao salvar categoria:', error);
       setError({
         title: 'Erro ao salvar categoria',
-        message: extractErrorMessage(error)
+        message: error.message
       });
     }
   };
 
   const handleAddSubcategory = (category: Category) => {
-    console.log('Categoria selecionada:', category); // Log para debug
     setSelectedCategory(category);
     setIsSubcategoryModalOpen(true);
   };
 
-  const handleSaveSubcategory = async (subcategoryData: { name: string; mainCategoryId: string }) => {
+  const handleSaveSubcategory = async (subcategoryData: { name: string }) => {
     try {
       if (!selectedCategory) {
         setError({
@@ -292,31 +139,30 @@ const Categories = () => {
         return;
       }
 
-      const response = await axios.post(
-        'http://localhost:8080/api/admin/subcategories',
-        {
-          name: subcategoryData.name,
-          mainCategoryId: selectedCategory.id
-        },
-        {
-          headers: {
-            ...getAuthHeader(),
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-      
-      if (response.data) {
-        setIsSubcategoryModalOpen(false);
-        await fetchCategories();
-        setSelectedCategory(null);
-      }
+      await createSubcategory({
+        name: subcategoryData.name,
+        parentCategoryId: selectedCategory.id,
+        isActive: true
+      });
+
+      // Atualizar a contagem de subcategorias para a categoria selecionada
+      await handleUpdateSubcategoriesCount(selectedCategory.id);
+
+      setIsSubcategoryModalOpen(false);
     } catch (error: any) {
       setError({
         title: 'Erro ao salvar subcategoria',
-        message: extractErrorMessage(error)
+        message: error.message
       });
     }
+  };
+
+  const handleUpdateSubcategoriesCount = async (categoryId: string) => {
+    const subcategoriesList = await getSubcategories(categoryId);
+    setSubcategoriesCount(prev => ({
+      ...prev,
+      [categoryId]: subcategoriesList.length
+    }));
   };
 
   if (isLoading) {
@@ -366,7 +212,7 @@ const Categories = () => {
           <div key={category.id} className="category-card">
             <div className="category-image">
               <img 
-                src={`http://localhost:8080${category.image}`} 
+                src={category.image || 'https://via.placeholder.com/150'} 
                 alt={category.name} 
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
@@ -382,76 +228,71 @@ const Categories = () => {
                 <h3>{category.name}</h3>
               </div>
               <div className="category-info">
-                <span className="establishments-count">
-                  {category._count?.sellers || 0} estabelecimentos
-                </span>
                 <span className="subcategories-count">
-                  {category._count?.subCategories || 0} subcategorias
+                  {subcategoriesCount[category.id] || 0} subcategorias
                 </span>
               </div>
-              <div className="action-buttons">
-                <div className="action-row">
-                  <button 
-                    className="action-btn edit"
-                    onClick={() => handleEditCategory(category)}
-                  >
-                    <i className="icon">✏️</i>
-                    Editar
-                  </button>
-                  <button 
-                    className="action-btn subcategories"
-                    onClick={() => handleAddSubcategory(category)}
-                  >
-                    <i className="icon">📑</i>
-                    Subcategorias
-                  </button>
-                </div>
-                <div className="action-row">
-                  <button 
-                    className="action-btn delete"
-                    onClick={() => handleDeleteCategory(category.id)}
-                  >
-                    <i className="icon">🗑️</i>
-                    Excluir
-                  </button>
-                  <button 
-                    className={`action-btn ${category.isActive ? 'deactivate' : 'activate'}`}
-                    onClick={() => handleToggleStatus(category.id)}
-                  >
-                    <i className="icon">{category.isActive ? '🔴' : '🟢'}</i>
-                    {category.isActive ? 'Desativar' : 'Ativar'}
-                  </button>
-                </div>
+              <div className="action-row">
+                <button 
+                  className="action-btn edit"
+                  onClick={() => handleEditCategory(category)}
+                >
+                  <i className="icon">✏️</i>
+                  Editar
+                </button>
+                <button 
+                  className="action-btn subcategories"
+                  onClick={() => handleAddSubcategory(category)}
+                >
+                  <i className="icon">📑</i>
+                  Subcategorias
+                </button>
+              </div>
+              <div className="action-row">
+                <button 
+                  className="action-btn delete"
+                  onClick={() => handleDeleteCategory(category.id)}
+                >
+                  <i className="icon">🗑️</i>
+                  Excluir
+                </button>
+                <button 
+                  className={`action-btn ${category.isActive ? 'deactivate' : 'activate'}`}
+                  onClick={() => handleToggleStatus(category.id)}
+                >
+                  <i className="icon">{category.isActive ? '🔴' : '🟢'}</i>
+                  {category.isActive ? 'Desativar' : 'Ativar'}
+                </button>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      <CategoryModal
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setCategoryToEdit(null);
-        }}
-        onSave={handleSaveCategory}
-        categoryToEdit={categoryToEdit || undefined}
-      />
+      {isModalOpen && (
+        <CategoryModal
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setCategoryToEdit(null);
+          }}
+          onSave={handleSaveCategory}
+          categoryToEdit={categoryToEdit || undefined}
+        />
+      )}
 
-      {selectedCategory && (
+      {isSubcategoryModalOpen && selectedCategory && (
         <SubcategoryModal
           isOpen={isSubcategoryModalOpen}
-          onClose={() => {
-            setIsSubcategoryModalOpen(false);
-            setSelectedCategory(null);
-          }}
+          onClose={() => setIsSubcategoryModalOpen(false)}
           onSave={handleSaveSubcategory}
           mainCategoryId={selectedCategory.id}
           mainCategoryName={selectedCategory.name}
+          onUpdateCount={() => handleUpdateSubcategoriesCount(selectedCategory.id)}
         />
       )}
     </div>
   );
-};
+}
 
 export default Categories; 

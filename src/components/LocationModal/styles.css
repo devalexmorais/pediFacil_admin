@@ -1,0 +1,112 @@
+.location-modal {
+  width: 90%;
+  max-width: 1000px;
+  max-height: 90vh;
+}
+
+.locations-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  padding: 20px;
+  height: calc(90vh - 100px);
+  overflow: hidden;
+}
+
+.cities-section,
+.neighborhoods-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+}
+
+.cities-list,
+.neighborhoods-list {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  padding: 8px;
+}
+
+.city-item,
+.neighborhood-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px solid #eee;
+}
+
+.city-item:last-child,
+.neighborhood-item:last-child {
+  border-bottom: none;
+}
+
+.city-name {
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.city-name:hover {
+  background-color: #f5f5f5;
+}
+
+.delete-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.delete-btn:hover {
+  background-color: #fee;
+}
+
+.form-group {
+  display: flex;
+  gap: 8px;
+}
+
+.form-group input {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.form-group button {
+  padding: 8px 16px;
+  background-color: #0366d6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.form-group button:hover {
+  background-color: #0256b4;
+}
+
+.city-item.selected {
+  background-color: #f0f7ff;
+}
+
+.city-item.selected .city-name {
+  font-weight: 500;
+  color: #0366d6;
+}
+
+.modal-subtitle {
+  color: #666;
+  margin-top: 4px;
+  font-size: 14px;
+}
+
+.neighborhoods-section h3 {
+  color: #333;
+  margin-bottom: 12px;
+} 

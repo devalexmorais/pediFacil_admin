@@ -1,28 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import './styles.css';
+import { db } from '../../config/firebase';
+import { 
+  collection, 
+  addDoc, 
+  getDocs, 
+  updateDoc, 
+  deleteDoc, 
+  doc,
+  query,
+  orderBy,
+  where
+} from 'firebase/firestore';
 
 interface Coupon {
   id: string;
   code: string;
-  type: string;
-  value: string;
-  validUntil: string;
+  discountType: 'percentage' | 'fixed';
+  value: number;
   maxUses: number;
-  useCount: number;
-  minOrderValue: string;
+  uses: number;
+  expiryDate: Date;
+  minOrderValue: number;
   isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: Date;
+  applicableCategories: string[];
+  applicableProducts: string[];
 }
 
 interface CouponFormData {
   code: string;
-  type: string;
+  discountType: 'percentage' | 'fixed';
   value: number;
-  validUntil: string;
   maxUses: number;
+  expiryDate: string;
   minOrderValue: number;
+  applicableCategories: string;
+  applicableProducts: string;
 }
 
 const Coupons: React.FC = () => {
@@ -32,36 +47,37 @@ const Coupons: React.FC = () => {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [formData, setFormData] = useState<CouponFormData>({
     code: '',
-    type: 'PERCENTAGE',
+    discountType: 'percentage',
     value: 0,
-    validUntil: '',
     maxUses: 100,
-    minOrderValue: 0
+    expiryDate: '',
+    minOrderValue: 0,
+    applicableCategories: '',
+    applicableProducts: ''
   });
   const [isLoading, setIsLoading] = useState(false);
-
-  const getToken = () => localStorage.getItem('@AdminApp:token');
+  const [error, setError] = useState<string | null>(null);
 
   const fetchCoupons = async () => {
+    setIsLoading(true);
+    setError(null);
     try {
-      const token = getToken();
-      const response = await fetch('http://localhost:8080/api/coupon/all', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      const data = await response.json();
+      const q = query(collection(db, 'coupons'), orderBy('createdAt', 'desc'));
+      const querySnapshot = await getDocs(q);
       
-      if (!response.ok) {
-        console.log('Erro completo:', data);
-        alert(data.error || 'Erro ao carregar cupons');
-        return;
-      }
+      const couponsData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        expiryDate: doc.data().expiryDate?.toDate() || new Date(),
+        createdAt: doc.data().createdAt?.toDate() || new Date()
+      })) as Coupon[];
       
-      setCoupons(data);
-    } catch (error) {
+      setCoupons(couponsData);
+    } catch (error: any) {
+      setError(error.message);
       console.error('Erro ao carregar cupons:', error);
-      alert('Erro ao carregar cupons');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -84,45 +100,71 @@ const Coupons: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const token = getToken();
-      const response = await fetch('http://localhost:8080/api/coupon', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          code: formData.code,
-          type: formData.type,
-          value: Number(formData.value),
-          validUntil: formData.validUntil,
-          maxUses: Number(formData.maxUses),
-          minOrderValue: Number(formData.minOrderValue)
-        }),
-      });
+      const couponData = {
+        code: formData.code,
+        discountType: formData.discountType,
+        value: Number(formData.value),
+        maxUses: Number(formData.maxUses),
+        expiryDate: new Date(formData.expiryDate),
+        minOrderValue: Number(formData.minOrderValue),
+        applicableCategories: formData.applicableCategories 
+          ? formData.applicableCategories.split(',').filter(Boolean)
+          : [],
+        applicableProducts: formData.applicableProducts
+          ? formData.applicableProducts.split(',').filter(Boolean)
+          : [],
+        isActive: true,
+        uses: 0,
+        createdAt: new Date()
+      };
 
-      const data = await response.json();
+      console.log('Dados do cupom sendo enviados:', couponData);
       
-      if (!response.ok) {
-        console.log('Erro completo:', data);
-        alert(data.error || 'Erro ao criar cupom');
+      const expiryDate = new Date(formData.expiryDate);
+      if (isNaN(expiryDate.getTime())) {
+        alert('Data de validade inválida');
         return;
       }
+      
+      const value = Number(formData.value);
+      if (value <= 0) {
+        alert('O valor do desconto deve ser maior que zero');
+        return;
+      }
+      
+      if (formData.discountType === 'percentage' && value > 100) {
+        alert('O desconto percentual não pode ser maior que 100%');
+        return;
+      }
+      
+      const codeQuery = query(
+        collection(db, 'coupons'), 
+        where('code', '==', formData.code)
+      );
+      const querySnapshot = await getDocs(codeQuery);
 
-      await fetchCoupons();
-      setIsModalOpen(false);
+      if (!querySnapshot.empty) {
+        alert('Já existe um cupom com este código');
+        return;
+      }
+      
+      await addDoc(collection(db, 'coupons'), couponData);
+      
+      alert('Cupom criado com sucesso!');
       setFormData({
         code: '',
-        type: 'PERCENTAGE',
+        discountType: 'percentage',
         value: 0,
-        validUntil: '',
         maxUses: 100,
-        minOrderValue: 0
+        expiryDate: '',
+        minOrderValue: 0,
+        applicableCategories: '',
+        applicableProducts: ''
       });
-      alert('Cupom criado com sucesso!');
+      fetchCoupons();
     } catch (error) {
       console.error('Erro ao criar cupom:', error);
-      alert('Erro ao criar cupom');
+      alert('Erro ao criar cupom. Verifique o console para mais detalhes.');
     } finally {
       setIsLoading(false);
     }
@@ -130,23 +172,15 @@ const Coupons: React.FC = () => {
 
   const handleToggleStatus = async (couponId: string) => {
     try {
-      const token = getToken();
-      const response = await fetch(`http://localhost:8080/api/coupon/${couponId}/toggle`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      const data = await response.json();
+      const couponRef = doc(db, 'coupons', couponId);
+      const coupon = coupons.find(c => c.id === couponId);
       
-      if (!response.ok) {
-        console.log('Erro completo:', data);
-        alert(data.error || 'Erro ao atualizar status');
-        return;
+      if (coupon) {
+        await updateDoc(couponRef, {
+          isActive: !coupon.isActive
+        });
+        await fetchCoupons();
       }
-
-      await fetchCoupons();
     } catch (error) {
       console.error('Erro ao atualizar status:', error);
       alert('Erro ao atualizar status do cupom');
@@ -156,22 +190,7 @@ const Coupons: React.FC = () => {
   const handleDelete = async (couponId: string) => {
     if (window.confirm('Tem certeza que deseja excluir este cupom?')) {
       try {
-        const token = getToken();
-        const response = await fetch(`http://localhost:8080/api/coupon/${couponId}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        const data = await response.json();
-        
-        if (!response.ok) {
-          console.log('Erro completo:', data);
-          alert(data.error || 'Erro ao excluir cupom');
-          return;
-        }
-
+        await deleteDoc(doc(db, 'coupons', couponId));
         await fetchCoupons();
         alert('Cupom excluído com sucesso!');
       } catch (error) {
@@ -185,97 +204,42 @@ const Coupons: React.FC = () => {
     coupon.code.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  if (error) {
+    return <div className="error-message">Erro: {error}</div>;
+  }
+
+  if (isLoading) {
+    return <div className="loading">Carregando...</div>;
+  }
+
   return (
     <div className="coupons-container">
       <div className="coupons-header">
-        <h1>Cupons</h1>
-        <div className="coupons-actions">
-          <input
-            type="text"
-            placeholder="Buscar cupom..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
-          />
-          <button 
-            className="new-coupon-button"
-            onClick={() => setIsModalOpen(true)}
-          >
-            Novo Cupom
-          </button>
-        </div>
+        <h1>Gerenciar Cupons</h1>
+        <button onClick={() => setIsModalOpen(true)} className="add-button">
+          Adicionar Cupom
+        </button>
       </div>
 
-      <div className="table-container">
-        <table className="coupons-table">
-          <thead>
-            <tr>
-              <th>Código</th>
-              <th>Tipo</th>
-              <th>Valor</th>
-              <th>Validade</th>
-              <th>Usos</th>
-              <th>Valor Mínimo</th>
-              <th>Status</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredCoupons.map((coupon) => (
-              <tr key={coupon.id}>
-                <td>{coupon.code}</td>
-                <td>{coupon.type === 'PERCENTAGE' ? 'Percentual' : 'Valor Fixo'}</td>
-                <td>{coupon.type === 'PERCENTAGE' ? `${coupon.value}%` : `R$ ${coupon.value}`}</td>
-                <td>{new Date(coupon.validUntil).toLocaleDateString()}</td>
-                <td>{coupon.useCount} / {coupon.maxUses}</td>
-                <td>R$ {coupon.minOrderValue}</td>
-                <td>
-                  <span className={`status-tag ${coupon.isActive ? 'ativo' : 'inativo'}`}>
-                    {coupon.isActive ? 'Ativo' : 'Inativo'}
-                  </span>
-                </td>
-                <td>
-                  <div className="action-buttons">
-                    <button 
-                      className={coupon.isActive ? 'delete-button' : 'edit-button'}
-                      onClick={() => handleToggleStatus(coupon.id)}
-                    >
-                      {coupon.isActive ? 'Desativar' : 'Ativar'}
-                    </button>
-                    <button 
-                      className="delete-button"
-                      onClick={() => handleDelete(coupon.id)}
-                    >
-                      Excluir
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="search-bar">
+        <input
+          type="text"
+          placeholder="Pesquisar cupons..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
       </div>
 
       {isModalOpen && (
-        <div className="modal-overlay">
+        <div className="modal">
           <div className="modal-content">
-            <div className="modal-header">
-              <h2>Novo Cupom</h2>
-              <button 
-                className="close-button"
-                onClick={() => setIsModalOpen(false)}
-              >
-                ×
-              </button>
-            </div>
-            <form className="coupon-form" onSubmit={handleSubmit}>
+            <h2>Adicionar Novo Cupom</h2>
+            <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label htmlFor="code">Código do Cupom</label>
+                <label>Código do Cupom:</label>
                 <input
                   type="text"
-                  id="code"
                   name="code"
-                  placeholder="Ex: WELCOME10"
                   value={formData.code}
                   onChange={handleInputChange}
                   required
@@ -283,26 +247,23 @@ const Coupons: React.FC = () => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="type">Tipo de Desconto</label>
-                <select 
-                  id="type" 
-                  name="type"
-                  value={formData.type}
+                <label>Tipo de Desconto:</label>
+                <select
+                  name="discountType"
+                  value={formData.discountType}
                   onChange={handleInputChange}
                   required
                 >
-                  <option value="PERCENTAGE">Percentual (%)</option>
-                  <option value="FIXED">Valor Fixo (R$)</option>
+                  <option value="percentage">Porcentagem</option>
+                  <option value="fixed">Valor Fixo</option>
                 </select>
               </div>
 
               <div className="form-group">
-                <label htmlFor="value">Valor do Desconto</label>
+                <label>Valor do Desconto:</label>
                 <input
                   type="number"
-                  id="value"
                   name="value"
-                  placeholder={formData.type === 'PERCENTAGE' ? "Ex: 10" : "Ex: 50.00"}
                   value={formData.value}
                   onChange={handleInputChange}
                   required
@@ -310,22 +271,9 @@ const Coupons: React.FC = () => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="validUntil">Validade</label>
-                <input
-                  type="date"
-                  id="validUntil"
-                  name="validUntil"
-                  value={formData.validUntil}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="maxUses">Número Máximo de Usos</label>
+                <label>Número Máximo de Usos:</label>
                 <input
                   type="number"
-                  id="maxUses"
                   name="maxUses"
                   value={formData.maxUses}
                   onChange={handleInputChange}
@@ -334,38 +282,111 @@ const Coupons: React.FC = () => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="minOrderValue">Valor Mínimo do Pedido</label>
+                <label>Data de Validade:</label>
+                <input
+                  type="datetime-local"
+                  name="expiryDate"
+                  value={formData.expiryDate}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Valor Mínimo do Pedido:</label>
                 <input
                   type="number"
-                  id="minOrderValue"
                   name="minOrderValue"
-                  placeholder="Ex: 50"
                   value={formData.minOrderValue}
                   onChange={handleInputChange}
                   required
                 />
               </div>
 
-              <div className="form-actions">
-                <button 
-                  type="button" 
-                  className="cancel-button"
-                  onClick={() => setIsModalOpen(false)}
-                >
-                  Cancelar
+              <div className="form-group">
+                <label>Categorias Aplicáveis (separadas por vírgula):</label>
+                <input
+                  type="text"
+                  name="applicableCategories"
+                  value={formData.applicableCategories}
+                  onChange={handleInputChange}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Produtos Aplicáveis (separados por vírgula):</label>
+                <input
+                  type="text"
+                  name="applicableProducts"
+                  value={formData.applicableProducts}
+                  onChange={handleInputChange}
+                />
+              </div>
+
+              <div className="modal-buttons">
+                <button type="submit" disabled={isLoading}>
+                  {isLoading ? 'Criando...' : 'Criar Cupom'}
                 </button>
-                <button 
-                  type="submit" 
-                  className="submit-button"
-                  disabled={isLoading}
-                >
-                  {isLoading ? 'Salvando...' : 'Salvar'}
+                <button type="button" onClick={() => setIsModalOpen(false)}>
+                  Cancelar
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      <div className="coupons-list">
+        {filteredCoupons.map(coupon => (
+          <div key={coupon.id} className={`coupon-card ${!coupon.isActive ? 'inactive' : ''}`}>
+            <div className="coupon-header">
+              <h3>{coupon.code}</h3>
+              <div className="coupon-actions">
+                <button
+                  onClick={() => handleToggleStatus(coupon.id)}
+                  className={`status-button ${coupon.isActive ? 'active' : 'inactive'}`}
+                >
+                  {coupon.isActive ? 'Ativo' : 'Inativo'}
+                </button>
+                <button onClick={() => handleDelete(coupon.id)} className="delete-button">
+                  <i className="fas fa-trash"></i>
+                </button>
+              </div>
+            </div>
+            
+            <div className="coupon-details">
+              <p>
+                <strong>Desconto:</strong>{' '}
+                {coupon.discountType === 'percentage'
+                  ? `${coupon.value}%`
+                  : `R$ ${coupon.value.toFixed(2)}`}
+              </p>
+              <p>
+                <strong>Usos:</strong> {coupon.uses}/{coupon.maxUses}
+              </p>
+              <p>
+                <strong>Validade:</strong>{' '}
+                {coupon.expiryDate.toLocaleDateString('pt-BR')}
+              </p>
+              <p>
+                <strong>Valor Mínimo:</strong> R$ {coupon.minOrderValue.toFixed(2)}
+              </p>
+              {coupon.applicableCategories.length > 0 && (
+                <p>
+                  <strong>Categorias:</strong>{' '}
+                  {coupon.applicableCategories.join(', ')}
+                </p>
+              )}
+              {coupon.applicableProducts.length > 0 && (
+                <p>
+                  <strong>Produtos:</strong>{' '}
+                  {coupon.applicableProducts.join(', ')}
+                </p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

@@ -1,22 +1,25 @@
 "use strict";
 const electron = require("electron");
-electron.contextBridge.exposeInMainWorld("ipcRenderer", {
-  on(...args) {
-    const [channel, listener] = args;
-    return electron.ipcRenderer.on(channel, (event, ...args2) => listener(event, ...args2));
+electron.contextBridge.exposeInMainWorld("electronAPI", {
+  // Comunicação IPC
+  send: (channel, data) => {
+    const validChannels = ["toMain"];
+    if (validChannels.includes(channel)) {
+      electron.ipcRenderer.send(channel, data);
+    }
   },
-  off(...args) {
-    const [channel, ...omit] = args;
-    return electron.ipcRenderer.off(channel, ...omit);
+  receive: (channel, func) => {
+    const validChannels = ["fromMain"];
+    if (validChannels.includes(channel)) {
+      electron.ipcRenderer.on(channel, (event, ...args) => func(...args));
+    }
   },
-  send(...args) {
-    const [channel, ...omit] = args;
-    return electron.ipcRenderer.send(channel, ...omit);
-  },
-  invoke(...args) {
-    const [channel, ...omit] = args;
-    return electron.ipcRenderer.invoke(channel, ...omit);
+  // Você pode expor outras APIs necessárias aqui
+  invoke: (channel, data) => {
+    const validChannels = ["invoke-action"];
+    if (validChannels.includes(channel)) {
+      return electron.ipcRenderer.invoke(channel, data);
+    }
   }
-  // You can expose other APTs you need here.
-  // ...
 });
+console.log("Preload script carregado com sucesso!");

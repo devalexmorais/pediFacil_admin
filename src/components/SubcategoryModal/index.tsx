@@ -1,21 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { getSubcategories, deleteSubcategory } from '../../services/categoryServices';
 import './styles.css';
 
 interface Subcategory {
   id: string;
   name: string;
   isActive: boolean;
-  mainCategoryId: string;
+  parentCategoryId: string;
   createdAt: string;
 }
 
 interface SubcategoryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (subcategoryData: { name: string; mainCategoryId: string }) => void;
+  onSave: (subcategoryData: { name: string }) => void;
   mainCategoryId: string;
   mainCategoryName: string;
+  onUpdateCount: () => void;
 }
 
 const SubcategoryModal: React.FC<SubcategoryModalProps> = ({ 
@@ -23,38 +24,26 @@ const SubcategoryModal: React.FC<SubcategoryModalProps> = ({
   onClose, 
   onSave, 
   mainCategoryId,
-  mainCategoryName
+  mainCategoryName,
+  onUpdateCount
 }) => {
   const [name, setName] = useState('');
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [editingSubcategory, setEditingSubcategory] = useState<Subcategory | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  const getAuthHeader = () => {
-    const token = localStorage.getItem('@AdminApp:token');
-    if (!token) {
-      console.error('Token de acesso não encontrado');
-      return {};
-    }
-    console.log('Token encontrado:', token);
-    return {
-      Authorization: `Bearer ${token}`
-    };
-  };
+  const [error, setError] = useState<string | null>(null);
 
   const fetchSubcategories = async () => {
     try {
-      const headers = getAuthHeader();
-      console.log('Headers da requisição:', headers);
-      
-      const response = await axios.get(
-        `http://localhost:8080/api/admin/subcategories?mainCategoryId=${mainCategoryId}`,
-        { headers }
-      );
-      console.log('Resposta da API (subcategorias):', response.data);
-      setSubcategories(response.data);
-    } catch (error) {
+      setIsLoading(true);
+      console.log('Buscando subcategorias para categoria:', mainCategoryId);
+      const subcategoriesList = await getSubcategories(mainCategoryId);
+      console.log('Subcategorias encontradas:', subcategoriesList);
+      setSubcategories(subcategoriesList);
+      setError(null);
+    } catch (error: any) {
       console.error('Erro ao buscar subcategorias:', error);
+      setError(error.message || 'Erro ao carregar subcategorias');
     } finally {
       setIsLoading(false);
     }
@@ -77,67 +66,32 @@ const SubcategoryModal: React.FC<SubcategoryModalProps> = ({
     }
 
     try {
-      if (editingSubcategory) {
-        // Editando subcategoria existente
-        await axios.put(
-          `http://localhost:8080/api/admin/subcategories/${editingSubcategory.id}`,
-          {
-            name: name.trim(),
-            mainCategoryId: mainCategoryId
-          },
-          { 
-            headers: {
-              ...getAuthHeader(),
-              'Content-Type': 'application/json'
-            } 
-          }
-        );
-      } else {
-        // Criando nova subcategoria
-        await onSave({
-          name: name.trim(),
-          mainCategoryId: mainCategoryId
-        });
-      }
-      
+      await onSave({ name: name.trim() });
       setName('');
       setEditingSubcategory(null);
       await fetchSubcategories();
     } catch (error: any) {
-      console.error('Erro detalhado:', {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        headers: error.response?.headers,
-        mainCategoryId: mainCategoryId // Log do ID da categoria
-      });
-      alert('Erro ao salvar subcategoria: ' + (error.response?.data?.message || error.message));
-    }
-  };
-
-  const handleEdit = (subcategory: Subcategory) => {
-    setEditingSubcategory(subcategory);
-    setName(subcategory.name);
-  };
-
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Tem certeza que deseja excluir esta subcategoria?')) {
-      try {
-        await axios.delete(
-          `http://localhost:8080/api/admin/subcategories/${id}`,
-          { headers: getAuthHeader() }
-        );
-        await fetchSubcategories();
-      } catch (error: any) {
-        console.error('Erro ao excluir subcategoria:', error);
-        alert('Erro ao excluir subcategoria: ' + (error.response?.data?.message || error.message));
-      }
+      console.error('Erro ao salvar subcategoria:', error);
+      alert('Erro ao salvar subcategoria: ' + error.message);
     }
   };
 
   const handleCancel = () => {
     setName('');
     setEditingSubcategory(null);
+  };
+
+  const handleDeleteSubcategory = async (subcategoryId: string) => {
+    if (window.confirm('Tem certeza que deseja excluir esta subcategoria?')) {
+      try {
+        await deleteSubcategory(mainCategoryId, subcategoryId);
+        await fetchSubcategories();
+        onUpdateCount();
+      } catch (error: any) {
+        console.error('Erro ao excluir subcategoria:', error);
+        setError(error.message || 'Erro ao excluir subcategoria');
+      }
+    }
   };
 
   if (!isOpen) return null;
@@ -158,23 +112,20 @@ const SubcategoryModal: React.FC<SubcategoryModalProps> = ({
             <h3>Subcategorias Existentes</h3>
             {isLoading ? (
               <p>Carregando subcategorias...</p>
+            ) : error ? (
+              <p className="error-message">{error}</p>
             ) : subcategories.length > 0 ? (
               <div className="subcategories-grid">
                 {subcategories.map((subcategory) => (
                   <div key={subcategory.id} className="subcategory-item">
                     <span className="subcategory-name">{subcategory.name}</span>
                     <div className="subcategory-actions">
-                      <button 
-                        className="action-btn edit"
-                        onClick={() => handleEdit(subcategory)}
-                      >
-                        <i className="icon">✏️</i>
-                      </button>
-                      <button 
+                      <button
                         className="action-btn delete"
-                        onClick={() => handleDelete(subcategory.id)}
+                        onClick={() => handleDeleteSubcategory(subcategory.id)}
+                        title="Excluir subcategoria"
                       >
-                        <i className="icon">🗑️</i>
+                        🗑️
                       </button>
                     </div>
                   </div>
@@ -186,7 +137,7 @@ const SubcategoryModal: React.FC<SubcategoryModalProps> = ({
           </div>
 
           <div className="subcategory-form">
-            <h3>{editingSubcategory ? 'Editar Subcategoria' : 'Nova Subcategoria'}</h3>
+            <h3>Nova Subcategoria</h3>
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label htmlFor="name">Nome da Subcategoria*</label>
@@ -201,13 +152,8 @@ const SubcategoryModal: React.FC<SubcategoryModalProps> = ({
               </div>
 
               <div className="form-buttons">
-                {editingSubcategory && (
-                  <button type="button" className="cancel-button" onClick={handleCancel}>
-                    Cancelar
-                  </button>
-                )}
                 <button type="submit" className="save-button">
-                  {editingSubcategory ? 'Atualizar' : 'Adicionar'}
+                  Adicionar
                 </button>
               </div>
             </form>
@@ -216,6 +162,6 @@ const SubcategoryModal: React.FC<SubcategoryModalProps> = ({
       </div>
     </div>
   );
-};
+}
 
 export default SubcategoryModal; 

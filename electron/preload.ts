@@ -1,24 +1,30 @@
-import { ipcRenderer, contextBridge } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
 
-// --------- Expose some API to the Renderer process ---------
-contextBridge.exposeInMainWorld('ipcRenderer', {
-  on(...args: Parameters<typeof ipcRenderer.on>) {
-    const [channel, listener] = args
-    return ipcRenderer.on(channel, (event, ...args) => listener(event, ...args))
+// Expõe APIs seguras para o processo de renderização
+contextBridge.exposeInMainWorld('electronAPI', {
+  // Comunicação IPC
+  send: (channel: string, data: any) => {
+    // Lista de canais permitidos para envio
+    const validChannels = ['toMain']
+    if (validChannels.includes(channel)) {
+      ipcRenderer.send(channel, data)
+    }
   },
-  off(...args: Parameters<typeof ipcRenderer.off>) {
-    const [channel, ...omit] = args
-    return ipcRenderer.off(channel, ...omit)
+  receive: (channel: string, func: Function) => {
+    // Lista de canais permitidos para recebimento
+    const validChannels = ['fromMain']
+    if (validChannels.includes(channel)) {
+      ipcRenderer.on(channel, (event, ...args) => func(...args))
+    }
   },
-  send(...args: Parameters<typeof ipcRenderer.send>) {
-    const [channel, ...omit] = args
-    return ipcRenderer.send(channel, ...omit)
-  },
-  invoke(...args: Parameters<typeof ipcRenderer.invoke>) {
-    const [channel, ...omit] = args
-    return ipcRenderer.invoke(channel, ...omit)
-  },
-
-  // You can expose other APTs you need here.
-  // ...
+  // Você pode expor outras APIs necessárias aqui
+  invoke: (channel: string, data: any) => {
+    const validChannels = ['invoke-action']
+    if (validChannels.includes(channel)) {
+      return ipcRenderer.invoke(channel, data)
+    }
+  }
 })
+
+// Log para debug
+console.log('Preload script carregado com sucesso!')
