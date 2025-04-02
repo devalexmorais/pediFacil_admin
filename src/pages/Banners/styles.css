@@ -277,4 +277,20 @@
   .modal-content {
     margin: 16px;
   }
+}
+
+.loading-text {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+  color: #3498db;
+  font-style: italic;
+}
+
+.no-data-text {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+  color: #e74c3c;
+  font-style: italic;
 } 

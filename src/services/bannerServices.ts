@@ -19,7 +19,7 @@ export interface Banner {
   id: string;
   title: string;
   image: string;
-  mainCategoryId: string;
+  subcategoryId: string;
   isActive: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -50,7 +50,7 @@ export const createBanner = async (bannerData: {
     // 4. Cria documento no Firestore
     const docRef = await addDoc(bannersCollection, {
       title: bannerData.title,
-      mainCategoryId: bannerData.mainCategoryId,
+      subcategoryId: bannerData.mainCategoryId,
       image: imageUrl,
       isActive: true,
       createdAt: serverTimestamp(),

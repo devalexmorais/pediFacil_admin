@@ -1,125 +1,176 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Funções auxiliares
+    // Função para verificar se o usuário é o proprietário do documento
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Função para verificar se o usuário está autenticado
     function isAuthenticated() {
       return request.auth != null;
     }
     
-    function isAdmin() {
-      return isAuthenticated() && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN';
-    }
-    
-    function isSeller() {
-      return isAuthenticated() && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'SELLER';
-    }
-    
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-
-    // Regras para usuários
-    match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update, delete: if isAdmin() || isOwner(userId);
-    }
-
-    // Regras para estabelecimentos
-    match /sellers/{sellerId} {
-      allow read: if true;
-      allow create: if isAuthenticated();
-      allow update, delete: if isAdmin() || 
-        (isSeller() && resource.data.userId == request.auth.uid);
-    }
-
-    // Regras para produtos
-    match /products/{productId} {
-      allow read: if true;
-      allow create, update, delete: if isAdmin() || 
-        (isSeller() && resource.data.sellerId == request.auth.uid);
-    }
-
-    // Regras para pedidos
-    match /orders/{orderId} {
-      allow read: if isAdmin() || 
-        isOwner(resource.data.customerId) || 
-        (isSeller() && resource.data.sellerId == request.auth.uid);
-      allow create: if isAuthenticated();
-      allow update: if isAdmin() || 
-        (isSeller() && resource.data.sellerId == request.auth.uid);
-    }
-
-    // Regras para categorias
-    match /categories/{categoryId} {
-      allow read: if true;
-      allow write: if isAdmin();
-      
-      match /subcategories/{subcategoryId} {
-        allow read: if true;
-        allow write: if isAdmin();
-      }
-    }
-
-    // Regras para banners
-    match /banners/{bannerId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
     // Regras para cupons
     match /coupons/{couponId} {
       allow read: if true;
-      allow create: if isAdmin();
-      allow update, delete: if isAdmin();
+      allow create, update, delete: if isAuthenticated();
     }
-
-    // Regras para notificações
+    
+    // Regras para banners
+    match /banners/{bannerId} {
+      allow read: if true;
+      allow create, update, delete: if isAuthenticated();
+    }
+    
+    // Regra geral para leitura
+    match /{document=**} {
+      allow read: if true;
+    }
+    
     match /notifications/{notificationId} {
-      function isValidNotification() {
-        let incoming = request.resource.data;
-        return incoming.size() == 9 && // Número exato de campos
-          incoming.title is string && incoming.title.size() > 0 &&
-          incoming.message is string && incoming.message.size() > 0 &&
-          incoming.type in ['PROMOTION', 'NEWS', 'ALERT'] &&
-          incoming.recipientType in ['CUSTOMER', 'SELLER'] &&
-          (incoming.couponCode == null || (incoming.couponCode is string && incoming.couponCode.size() > 0)) &&
-          incoming.read is bool &&
-          incoming.createdAt is timestamp &&
-          incoming.updatedAt is timestamp &&
-          incoming.recipient.size() == 3 &&
-          incoming.recipient.id is string &&
-          incoming.recipient.name is string &&
-          incoming.recipient.email is string;
+     allow read: if isAuthenticated();
+     allow create: if isAuthenticated();
+     allow update: if isAuthenticated();
+     allow delete: if isAuthenticated();
+   }
+   
+  match /devices/{deviceId} {
+     allow read: if isAuthenticated();
+     allow create, update, delete: if isAuthenticated();
+   }
+    
+   // Regras específicas para usuários
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if isAuthenticated();
+      allow delete: if request.auth != null && request.auth.uid == userId;
+  	// Permissão específica para a subcoleção usedCoupons
+      match /usedCoupons/{couponId} {
+        allow read: if true;
+        // Permitir que o próprio usuário ou qualquer parceiro autenticado crie registros
+        allow create: if isAuthenticated();
+        allow update, delete: if isOwner(userId);
       }
 
-      allow read: if isAuthenticated() && (
-        isAdmin() || // Admins podem ler todas as notificações
-        resource.data.recipientType == request.auth.role || // Usuários podem ler notificações do seu tipo
-        resource.data.recipient.id == 'all' // Todos podem ler notificações gerais
-      );
-      
-      allow create: if isAdmin() && isValidNotification();
-      allow update: if isAdmin() && isValidNotification();
-      allow delete: if isAdmin();
-    }
-
-    // Regras para estados, cidades e bairros
-    match /states/{stateId} {
-      allow read: if true;
-      allow write: if isAdmin();
-      
-      match /cities/{cityId} {
+      match /favorites/{favoriteId} {
         allow read: if true;
-        allow write: if isAdmin();
-        
-        match /neighborhoods/{neighborhoodId} {
+        allow create, update, delete: if isOwner(userId);
+      }
+
+      match /orders/{orderId} {
+        allow read: if true;
+        allow create, update, delete: if isOwner(userId);
+
+        match /review/{reviewId} {
           allow read: if true;
-          allow write: if isAdmin();
+          allow create, update, delete: if isOwner(userId);
         }
       }
+
+      match /addresses/{addressId} {
+        allow read: if true;
+        allow create, update, delete: if isOwner(userId);
+      }
+    }
+    
+    // Regras específicas para parceiros
+    match /partners/{partnerId} {
+      allow read: if true;
+      allow create, update, delete: if isOwner(partnerId);
+      
+      // Regras para cupons
+      match /coupons/{couponId} {
+        allow read: if true;
+        allow create, update, delete: if isOwner(partnerId);
+      }
+      
+      match /delivery_fees/{feeId} {
+        allow read: if true;
+        allow create, update, delete: if isOwner(partnerId);
+      }
+
+      match /fees/{feeId} {
+        allow read: if true;
+        allow create, update, delete: if isOwner(partnerId);
+      }
+
+      match /neighborhoods_fees/{feeId} {
+        allow read: if true;
+        allow create, update, delete: if isOwner(partnerId);
+      }
+      
+      match /orders/{orderId} {
+        allow read: if true;
+        allow create: if isAuthenticated();
+        allow update, delete: if isAuthenticated() && (
+          resource.data.userId == request.auth.uid || isOwner(partnerId)
+        );
+        
+        match /review/{reviewId} {
+          allow read: if true;
+          allow create: if isAuthenticated();
+          allow update, delete: if isAuthenticated() && (
+            resource.data.userId == request.auth.uid
+          );
+        }
+      }
+      
+      match /app_fees/{feeId} {
+        allow read: if true;
+        allow create, update, delete: if isOwner(partnerId);
+      }
+      
+      match /products/{productId} {
+        allow read: if true;
+        allow create, update, delete: if isOwner(partnerId);
+      }
+      
+      match /categories/{categoryId} {
+        allow read: if true;
+        allow create, update, delete: if isOwner(partnerId);
+      }
+    }
+    
+    // Regras para avaliações globais
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid
+      );
+    }
+    
+    // Regras para categorias principais
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow create, update, delete: if isAuthenticated();
+      
+      match /subcategories/{subcategoryId} {
+        allow read: if true;
+        allow create, update, delete: if isAuthenticated();
+      }
+    }
+    
+    // Regras para estrutura de localidades
+    match /states/{stateId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+
+      match /cities/{cityId} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+
+        match /neighborhoods/{neighborhoodId} {
+          allow read: if true;
+          allow write: if isAuthenticated();
+        }
+      }
+    }
+    
+    match /cities/{cityId} {
+      allow read: if true;
     }
   }
 } 

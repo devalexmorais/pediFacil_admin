@@ -1,8 +1,7 @@
 .coupons-container {
   padding: 24px;
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .coupons-header {
@@ -13,119 +12,177 @@
 }
 
 .coupons-header h1 {
+  font-size: 28px;
+  color: #2d3748;
   margin: 0;
-  font-size: 24px;
-  color: #1a1a1a;
 }
 
-.coupons-actions {
-  display: flex;
-  gap: 16px;
-}
-
-.search-input {
-  min-width: 300px;
-  padding: 8px 16px;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
-.new-coupon-button {
-  padding: 8px 16px;
-  background-color: #2563eb;
+.add-button {
+  background-color: #4299e1;
   color: white;
   border: none;
-  border-radius: 4px;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.3s;
+  transition: all 0.3s ease;
 }
 
-.new-coupon-button:hover {
-  background-color: #1d4ed8;
+.add-button:hover {
+  background-color: #3182ce;
+  transform: translateY(-1px);
 }
 
-.table-container {
-  overflow-x: auto;
+.search-bar {
+  margin-bottom: 24px;
 }
 
-.coupons-table {
+.search-input-wrapper {
+  position: relative;
+  max-width: 400px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #a0aec0;
+}
+
+.search-input-wrapper input {
   width: 100%;
-  border-collapse: collapse;
-  margin-top: 16px;
+  padding: 12px 16px 12px 44px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: all 0.3s ease;
 }
 
-.coupons-table th,
-.coupons-table td {
-  padding: 12px;
-  text-align: left;
-  border-bottom: 1px solid #e5e7eb;
+.search-input-wrapper input:focus {
+  outline: none;
+  border-color: #4299e1;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
 }
 
-.coupons-table th {
-  background-color: #f9fafb;
-  font-weight: 600;
-  color: #4b5563;
+.coupons-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 24px;
 }
 
-.coupons-table tr:hover {
-  background-color: #f9fafb;
+.coupon-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  padding: 20px;
+  transition: all 0.3s ease;
 }
 
-.status-tag {
+.coupon-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 12px rgba(0, 0, 0, 0.1);
+}
+
+.coupon-card.inactive {
+  opacity: 0.7;
+  background-color: #f7fafc;
+}
+
+.coupon-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.coupon-code {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.coupon-code h3 {
+  font-size: 20px;
+  color: #2d3748;
+  margin: 0;
+}
+
+.status-badge {
+  display: inline-block;
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 12px;
   font-weight: 500;
 }
 
-.status-tag.ativo {
-  background-color: #dcfce7;
-  color: #166534;
+.status-badge.active {
+  background-color: #c6f6d5;
+  color: #2f855a;
 }
 
-.status-tag.inativo {
-  background-color: #fee2e2;
-  color: #991b1b;
+.status-badge.inactive {
+  background-color: #fed7d7;
+  color: #9b2c2c;
 }
 
-.action-buttons {
+.coupon-actions {
   display: flex;
   gap: 8px;
 }
 
-.edit-button,
-.delete-button {
-  padding: 4px 8px;
+.action-button {
+  background: none;
   border: none;
-  border-radius: 4px;
+  padding: 8px;
   cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.action-button.toggle {
+  color: #4299e1;
+}
+
+.action-button.delete {
+  color: #e53e3e;
+}
+
+.action-button:hover {
+  background-color: #f7fafc;
+  transform: scale(1.1);
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #4a5568;
   font-size: 14px;
-  transition: all 0.3s ease;
 }
 
-.edit-button {
-  background-color: #e5e7eb;
-  color: #4b5563;
+.detail-item.full-width {
+  width: 100%;
 }
 
-.edit-button:hover {
-  background-color: #d1d5db;
+.detail-item i {
+  color: #718096;
+  width: 16px;
 }
 
-.delete-button {
-  background-color: #fee2e2;
-  color: #991b1b;
-}
-
-.delete-button:hover {
-  background-color: #fecaca;
-  transform: scale(1.02);
-}
-
-/* Modal Styles */
-.modal-overlay {
+/* Modal styles */
+.modal {
   position: fixed;
   top: 0;
   left: 0;
@@ -139,112 +196,78 @@
 }
 
 .modal-content {
-  background-color: white;
-  padding: 24px;
-  border-radius: 8px;
+  background: white;
+  padding: 32px;
+  border-radius: 12px;
   width: 100%;
-  max-width: 600px;
+  max-width: 500px;
   max-height: 90vh;
   overflow-y: auto;
-  position: relative;
-  z-index: 1001;
 }
 
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-}
-
-.modal-header h2 {
-  margin: 0;
-  font-size: 20px;
-  color: #1a1a1a;
-}
-
-.close-button {
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: #6b7280;
-  cursor: pointer;
-  z-index: 1002;
-}
-
-.close-button:hover {
-  color: #1a1a1a;
-}
-
-.coupon-form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  position: relative;
-  z-index: 1001;
+.modal-content h2 {
+  margin: 0 0 24px 0;
+  color: #2d3748;
 }
 
 .form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  position: relative;
-  z-index: 1001;
+  margin-bottom: 20px;
 }
 
 .form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: #4a5568;
   font-weight: 500;
-  color: #4b5563;
 }
 
 .form-group input,
-.form-group select,
-.form-group textarea {
-  padding: 8px;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  font-size: 14px;
-  position: relative;
-  z-index: 1001;
-  background-color: white;
+.form-group select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 16px;
 }
 
-.form-group textarea {
-  min-height: 100px;
-  resize: vertical;
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #4299e1;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
 }
 
-.form-actions {
+.modal-buttons {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
   margin-top: 24px;
 }
 
-.cancel-button,
-.submit-button {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
+.modal-buttons button {
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 16px;
   cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.3s;
+  transition: all 0.3s ease;
 }
 
-.cancel-button {
-  background-color: #e5e7eb;
-  color: #4b5563;
-}
-
-.cancel-button:hover {
-  background-color: #d1d5db;
-}
-
-.submit-button {
-  background-color: #2563eb;
+.modal-buttons button[type="submit"] {
+  background-color: #4299e1;
   color: white;
+  border: none;
 }
 
-.submit-button:hover {
-  background-color: #1d4ed8;
+.modal-buttons button[type="submit"]:hover {
+  background-color: #3182ce;
+}
+
+.modal-buttons button[type="button"] {
+  background-color: #e2e8f0;
+  color: #4a5568;
+  border: none;
+}
+
+.modal-buttons button[type="button"]:hover {
+  background-color: #cbd5e0;
 } 

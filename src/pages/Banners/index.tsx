@@ -1,18 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { getMainCategories, Category } from '../../services/categoryServices';
+import { getMainCategories, Category, getSubcategories } from '../../services/categoryServices';
 import { createBanner, getAllBanners, deleteBanner, Banner } from '../../services/bannerServices';
+import { getAuth } from 'firebase/auth';
 import './styles.css';
+
+interface Subcategory {
+  id: string;
+  name: string;
+  isActive: boolean;
+  parentCategoryId: string;
+}
 
 const Banners = () => {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+  const [allSubcategories, setAllSubcategories] = useState<Subcategory[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [subcategoriesLoading, setSubcategoriesLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newBanner, setNewBanner] = useState({
     title: '',
     mainCategoryId: '',
+    subcategoryId: '',
     image: null as File | null,
   });
 
@@ -20,6 +32,30 @@ const Banners = () => {
     loadBanners();
     loadCategories();
   }, []);
+
+  // Efeito para carregar subcategorias dos banners existentes
+  useEffect(() => {
+    if (banners.length > 0 && categories.length > 0) {
+      const loadAllRelevantSubcategories = async () => {
+        // Criar um conjunto para evitar carregamentos duplicados
+        const uniqueCategoryIds = new Set(categories.map(c => c.id));
+        
+        for (const categoryId of uniqueCategoryIds) {
+          await loadSubcategories(categoryId);
+        }
+      };
+      
+      loadAllRelevantSubcategories();
+    }
+  }, [banners, categories]);
+
+  useEffect(() => {
+    if (newBanner.mainCategoryId) {
+      loadSubcategories(newBanner.mainCategoryId);
+    } else {
+      setSubcategories([]);
+    }
+  }, [newBanner.mainCategoryId]);
 
   const loadBanners = async () => {
     try {
@@ -49,25 +85,58 @@ const Banners = () => {
     }
   };
 
+  const loadSubcategories = async (categoryId: string) => {
+    try {
+      setSubcategoriesLoading(true);
+      const data = await getSubcategories(categoryId);
+      console.log('Subcategorias carregadas:', data);
+      setSubcategories(data);
+
+      // Adicionar às subcategorias globais para referência
+      setAllSubcategories(prev => {
+        const existing = prev.filter(sc => sc.parentCategoryId !== categoryId);
+        return [...existing, ...data];
+      });
+    } catch (err: any) {
+      console.error('Erro ao carregar subcategorias:', err);
+      setError(`Falha ao carregar subcategorias: ${err.message}`);
+    } finally {
+      setSubcategoriesLoading(false);
+    }
+  };
+
   const handleCreateBanner = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
       setError('');
 
+      // Verificar status de autenticação
+      const auth = getAuth();
+      const user = auth.currentUser;
+      console.log('Status de autenticação:', user ? 'Autenticado como ' + user.email : 'Não autenticado');
+
+      if (!user) {
+        throw new Error('Você precisa estar autenticado para criar banners');
+      }
+
       if (!newBanner.image) {
         throw new Error('Selecione uma imagem para o banner');
       }
 
+      if (!newBanner.subcategoryId) {
+        throw new Error('Selecione uma subcategoria para o banner');
+      }
+
       await createBanner({
         title: newBanner.title,
-        mainCategoryId: newBanner.mainCategoryId,
+        mainCategoryId: newBanner.subcategoryId, // Usar subcategoryId no lugar de mainCategoryId
         image: newBanner.image
       });
 
       await loadBanners();
       setIsModalOpen(false);
-      setNewBanner({ title: '', mainCategoryId: '', image: null });
+      setNewBanner({ title: '', mainCategoryId: '', subcategoryId: '', image: null });
     } catch (err: any) {
       console.error('Erro completo:', err);
       setError(err.message || 'Erro ao criar banner');
@@ -91,6 +160,24 @@ const Banners = () => {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setNewBanner({ ...newBanner, image: e.target.files[0] });
+    }
+  };
+
+  // Função para obter o nome da subcategoria
+  const getSubcategoryName = (subcategoryId: string): string => {
+    const subcategory = allSubcategories.find(sc => sc.id === subcategoryId);
+    if (subcategory) {
+      const category = categories.find(c => c.id === subcategory.parentCategoryId);
+      const categoryName = category ? category.name : 'Categoria não encontrada';
+      return `${categoryName} > ${subcategory.name}`;
+    }
+    return `Subcategoria ID: ${subcategoryId}`;
+  };
+
+  // Função para carregar todas as subcategorias de uma categoria específica
+  const loadCategorySubcategories = async (categoryId: string) => {
+    if (!allSubcategories.some(sc => sc.parentCategoryId === categoryId)) {
+      await loadSubcategories(categoryId);
     }
   };
 
@@ -134,7 +221,7 @@ const Banners = () => {
             />
             <div className="banner-info">
               <h3>{banner.title}</h3>
-              <p>Categoria: {categories.find(c => c.id === banner.mainCategoryId)?.name || 'Categoria não encontrada'}</p>
+              <p>Subcategoria: {getSubcategoryName(banner.subcategoryId)}</p>
               <span className={`status-badge ${banner.isActive ? 'active' : 'inactive'}`}>
                 {banner.isActive ? 'Ativo' : 'Inativo'}
               </span>
@@ -169,7 +256,7 @@ const Banners = () => {
                 <select
                   id="category"
                   value={newBanner.mainCategoryId}
-                  onChange={(e) => setNewBanner({ ...newBanner, mainCategoryId: e.target.value })}
+                  onChange={(e) => setNewBanner({ ...newBanner, mainCategoryId: e.target.value, subcategoryId: '' })}
                   required
                 >
                   <option value="">Selecione uma categoria</option>
@@ -179,6 +266,27 @@ const Banners = () => {
                     </option>
                   ))}
                 </select>
+              </div>
+              <div className="form-group">
+                <label htmlFor="subcategory">Subcategoria</label>
+                <select
+                  id="subcategory"
+                  value={newBanner.subcategoryId}
+                  onChange={(e) => setNewBanner({ ...newBanner, subcategoryId: e.target.value })}
+                  required
+                  disabled={!newBanner.mainCategoryId || subcategoriesLoading}
+                >
+                  <option value="">Selecione uma subcategoria</option>
+                  {subcategories.map((subcategory) => (
+                    <option key={subcategory.id} value={subcategory.id}>
+                      {subcategory.name}
+                    </option>
+                  ))}
+                </select>
+                {subcategoriesLoading && <span className="loading-text">Carregando subcategorias...</span>}
+                {!subcategoriesLoading && subcategories.length === 0 && newBanner.mainCategoryId && 
+                  <span className="no-data-text">Nenhuma subcategoria disponível para esta categoria</span>
+                }
               </div>
               <div className="form-group">
                 <label htmlFor="image">Imagem do Banner</label>
@@ -199,7 +307,7 @@ const Banners = () => {
                   className="cancel-button"
                   onClick={() => {
                     setIsModalOpen(false);
-                    setNewBanner({ title: '', mainCategoryId: '', image: null });
+                    setNewBanner({ title: '', mainCategoryId: '', subcategoryId: '', image: null });
                   }}
                 >
                   Cancelar

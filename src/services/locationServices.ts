@@ -16,33 +16,46 @@ export interface State {
   id: string;
   name: string;
   uf: string;
-  createdAt?: any;
 }
 
 export interface City {
   id: string;
   name: string;
   stateId: string;
-  createdAt?: any;
+  stateName?: string;
 }
 
 export interface Neighborhood {
   id: string;
   name: string;
   cityId: string;
-  stateId: string;
-  createdAt?: any;
+  cityName?: string;
+  stateId?: string;
+  stateName?: string;
 }
 
 // Estados
-export const createState = async (stateData: Omit<State, 'id' | 'createdAt'>) => {
+export const createState = async (stateData: { name: string; uf: string }): Promise<State> => {
   try {
+    // Garantindo que o nome seja uma string
+    const name = String(stateData.name).trim();
+    const uf = String(stateData.uf).trim().toUpperCase();
+    
+    if (!name || name.length < 2) {
+      throw new Error('Nome do estado deve ter pelo menos 2 caracteres');
+    }
+    
+    if (!uf || uf.length !== 2) {
+      throw new Error('UF deve ter exatamente 2 caracteres');
+    }
+    
     const statesRef = collection(db, 'states');
     const docRef = await addDoc(statesRef, {
-      ...stateData,
+      name,
+      uf,
       createdAt: serverTimestamp()
     });
-    return { id: docRef.id, ...stateData };
+    return { id: docRef.id, name, uf };
   } catch (error) {
     console.error('Erro ao criar estado:', error);
     throw error;
@@ -65,14 +78,25 @@ export const getAllStates = async (): Promise<State[]> => {
 };
 
 // Cidades
-export const createCity = async (stateId: string, cityData: Omit<City, 'id' | 'stateId' | 'createdAt'>) => {
+export const createCity = async (stateId: string, cityData: { name: string }): Promise<City> => {
   try {
+    // Garantindo que o nome seja uma string
+    const name = String(cityData.name).trim();
+    
+    if (!name || name.length < 2) {
+      throw new Error('Nome da cidade deve ter pelo menos 2 caracteres');
+    }
+    
+    // Obter o nome do estado para referência
+    const state = await getStateById(stateId);
+    
     const stateDocRef = doc(db, 'states', stateId);
     const citiesCollectionRef = collection(stateDocRef, 'cities');
     
     const newCity = {
-      ...cityData,
+      name,
       stateId,
+      stateName: state.name,
       createdAt: serverTimestamp()
     };
     
@@ -103,24 +127,70 @@ export const getCitiesByState = async (stateId: string): Promise<City[]> => {
 
 // Bairros
 export const createNeighborhood = async (
-  stateId: string,
-  cityId: string,
-  neighborhoodData: Omit<Neighborhood, 'id' | 'stateId' | 'cityId' | 'createdAt'>
-) => {
+  stateId: string, 
+  cityId: string, 
+  neighborhoodData: { name: string }
+): Promise<Neighborhood> => {
   try {
+    // Simplificando: apenas use o nome fornecido diretamente
+    const name = String(neighborhoodData.name).trim();
+    
+    if (!name || name.length < 2) {
+      throw new Error('Nome do bairro deve ter pelo menos 2 caracteres');
+    }
+    
+    // Referências diretas ao Firestore
     const stateDocRef = doc(db, 'states', stateId);
     const cityDocRef = doc(stateDocRef, 'cities', cityId);
     const neighborhoodsCollectionRef = collection(cityDocRef, 'neighborhoods');
     
+    // Verificar se já existe um documento com o mesmo nome
+    const q = query(neighborhoodsCollectionRef);
+    const querySnapshot = await getDocs(q);
+    const existingNeighborhood = querySnapshot.docs.find(
+      doc => doc.data().name.toLowerCase() === name.toLowerCase()
+    );
+    
+    if (existingNeighborhood) {
+      throw new Error(`Já existe um bairro com o nome "${name}"`);
+    }
+    
+    // Simplificando: obter os nomes apenas se necessário
+    let stateName = '';
+    let cityName = '';
+    
+    try {
+      // Tentar obter informações do estado e cidade, mas continuar mesmo se falhar
+      const state = await getStateById(stateId);
+      stateName = state.name;
+      
+      const city = await getCityById(stateId, cityId);
+      cityName = city.name;
+    } catch (e) {
+      console.warn('Não foi possível obter nomes completos de estado/cidade:', e);
+      // Continuar mesmo com erro para criar o bairro de qualquer forma
+    }
+    
     const newNeighborhood = {
-      ...neighborhoodData,
-      stateId,
+      name,
       cityId,
+      cityName,
+      stateId,
+      stateName,
       createdAt: serverTimestamp()
     };
     
     const docRef = await addDoc(neighborhoodsCollectionRef, newNeighborhood);
-    return { id: docRef.id, ...newNeighborhood };
+    
+    // Retornar objeto simplificado para uso no front-end
+    return { 
+      id: docRef.id, 
+      name,
+      cityId,
+      cityName, 
+      stateId,
+      stateName
+    };
   } catch (error) {
     console.error('Erro ao criar bairro:', error);
     throw error;
@@ -207,4 +277,25 @@ export const deleteNeighborhood = async (stateId: string, cityId: string, neighb
     console.error('Erro ao excluir bairro:', error);
     throw error;
   }
+};
+
+// Funções auxiliares (se não existirem, adicione-as)
+const getStateById = async (stateId: string): Promise<State> => {
+  // Implementação para buscar um estado pelo ID
+  const states = await getAllStates();
+  const state = states.find(state => state.id === stateId);
+  if (!state) {
+    throw new Error(`Estado com ID ${stateId} não encontrado`);
+  }
+  return state;
+};
+
+const getCityById = async (stateId: string, cityId: string): Promise<City> => {
+  // Implementação para buscar uma cidade pelo ID
+  const cities = await getCitiesByState(stateId);
+  const city = cities.find(city => city.id === cityId);
+  if (!city) {
+    throw new Error(`Cidade com ID ${cityId} não encontrada`);
+  }
+  return city;
 }; 
