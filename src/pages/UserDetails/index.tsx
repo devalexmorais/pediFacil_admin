@@ -1,6 +1,42 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { doc, getDoc, updateDoc, collection, getDocs, Timestamp } from 'firebase/firestore';
+import { db } from '../../config/firebase';
 import './styles.css';
+
+const formatCPF = (encryptedCPF: string): string => {
+  try {
+    // Pega os últimos 3 dígitos após o último ponto
+    const lastPart = encryptedCPF.split('.').pop();
+    if (!lastPart) return '***.***.***-**';
+    
+    // Formata como CPF usando os 3 dígitos como início
+    return `${lastPart}.***.***-**`;
+  } catch (error) {
+    return '***.***.***-**';
+  }
+};
+
+interface Address {
+  id: string;
+  title: string;
+  street: string;
+  number: string;
+  complement: string;
+  neighborhood: string;
+  neighborhoodId: string;
+  city: string;
+  cityId: string;
+  state: string;
+  stateId: string;
+  isDefault: boolean;
+}
+
+interface DeviceInfo {
+  lastUpdated: Timestamp;
+  platform: string;
+  version: number;
+}
 
 interface Customer {
   id: string;
@@ -8,10 +44,18 @@ interface Customer {
   email: string;
   phone: string;
   cpf: string;
-  isActive: boolean;
-  isBlocked: boolean;
-  createdAt: string;
-  updatedAt: string;
+  birthDate: string;
+  profileImage: string;
+  role: string;
+  status: string;
+  deviceInfo: DeviceInfo;
+  addresses: Address[];
+  usedCoupons: string[];
+  fcmToken: string;
+  fcmTokens: Record<string, boolean>;
+  lastTokenUpdate: Timestamp;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
   _count: {
     orders: number;
     reviews: number;
@@ -25,59 +69,67 @@ const UserDetails = () => {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const API_URL = 'http://localhost:8080';
 
   useEffect(() => {
-    loadCustomerDetails();
+    if (id) {
+      loadCustomerDetails();
+    }
   }, [id]);
 
   const loadCustomerDetails = async () => {
+    if (!id) return;
+    
     try {
       setLoading(true);
       setError('');
-      const token = localStorage.getItem('@AdminApp:token');
-      
-      if (!token) {
-        throw new Error('Token não encontrado');
-      }
 
-      // Primeiro busca todos os clientes
-      const response = await fetch(`${API_URL}/api/admin/customers`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const userRef = doc(db, 'users', id);
+      const userDoc = await getDoc(userRef);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Erro ao carregar clientes');
-      }
-
-      const data = await response.json();
-      
-      // Encontra o cliente específico pelo ID
-      const customer = data.find((c: any) => c.id === id);
-      
-      if (!customer) {
+      if (!userDoc.exists()) {
         throw new Error('Cliente não encontrado');
       }
-      
-      // Validação dos dados
+
+      const userData = userDoc.data();
+
+      // Buscar contagens relacionadas
+      const ordersCollection = collection(db, `users/${id}/orders`);
+      const reviewsCollection = collection(db, `users/${id}/reviews`);
+
+      const [ordersSnapshot, reviewsSnapshot] = await Promise.all([
+        getDocs(ordersCollection),
+        getDocs(reviewsCollection)
+      ]);
+
+      // Mapear endereços diretamente do userData
+      const addresses = userData.addresses || [];
+
       const validCustomer = {
-        id: customer.id || '',
-        name: customer.name || 'Nome não informado',
-        email: customer.email || 'Email não informado',
-        phone: customer.phone || 'Telefone não informado',
-        cpf: customer.cpf || 'CPF não informado',
-        isActive: Boolean(customer.isActive),
-        isBlocked: Boolean(customer.isBlocked),
-        createdAt: customer.createdAt || new Date().toISOString(),
-        updatedAt: customer.updatedAt || new Date().toISOString(),
+        id: userDoc.id,
+        name: userData.name || 'Nome não informado',
+        email: userData.email || 'Email não informado',
+        phone: userData.phone || 'Telefone não informado',
+        cpf: userData.cpf || 'CPF não informado',
+        birthDate: userData.birthDate || '',
+        profileImage: userData.profileImage || '',
+        role: userData.role || 'customer',
+        status: userData.status || 'active',
+        deviceInfo: userData.deviceInfo || {
+          lastUpdated: Timestamp.now(),
+          platform: '',
+          version: 0
+        },
+        addresses: addresses,
+        usedCoupons: userData.usedCoupons || [],
+        fcmToken: userData.fcmToken || '',
+        fcmTokens: userData.fcmTokens || {},
+        lastTokenUpdate: userData.lastTokenUpdate || Timestamp.now(),
+        createdAt: userData.createdAt || Timestamp.now(),
+        updatedAt: userData.updatedAt || Timestamp.now(),
         _count: {
-          orders: Number(customer._count?.orders) || 0,
-          reviews: Number(customer._count?.reviews) || 0,
-          addresses: Number(customer._count?.addresses) || 0
+          orders: ordersSnapshot.size,
+          reviews: reviewsSnapshot.size,
+          addresses: addresses.length
         }
       };
 
@@ -91,27 +143,15 @@ const UserDetails = () => {
   };
 
   const handleToggleBlock = async () => {
-    if (!customer) return;
+    if (!customer || !id) return;
     
     try {
-      const token = localStorage.getItem('@AdminApp:token');
+      const userRef = doc(db, 'users', id);
       
-      if (!token) {
-        throw new Error('Token não encontrado');
-      }
-
-      const response = await fetch(`${API_URL}/api/admin/customers/${customer.id}/toggle-block`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+      await updateDoc(userRef, {
+        status: customer.status === 'active' ? 'blocked' : 'active',
+        updatedAt: Timestamp.now()
       });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Erro ao alterar status do cliente');
-      }
 
       await loadCustomerDetails();
     } catch (err: any) {
@@ -160,10 +200,19 @@ const UserDetails = () => {
       </button>
 
       <div className="details-header">
-        <h1>{customer.name}</h1>
+        <div className="user-profile">
+          {customer.profileImage && (
+            <img 
+              src={customer.profileImage} 
+              alt={customer.name}
+              className="profile-image"
+            />
+          )}
+          <h1>{customer.name}</h1>
+        </div>
         <div className="user-info">
-          <span className={`status-badge ${customer.isBlocked ? 'inativo' : 'ativo'}`}>
-            {customer.isBlocked ? 'Bloqueado' : 'Ativo'}
+          <span className={`status-badge ${customer.status === 'blocked' ? 'inativo' : 'ativo'}`}>
+            {customer.status === 'blocked' ? 'Bloqueado' : 'Ativo'}
           </span>
           <span className="order-count">🛍️ {customer._count.orders} pedidos</span>
         </div>
@@ -183,8 +232,29 @@ const UserDetails = () => {
             </div>
             <div className="info-item">
               <span className="label">CPF</span>
-              <span className="value">{customer.cpf}</span>
+              <span className="value">{formatCPF(customer.cpf)}</span>
             </div>
+            <div className="info-item">
+              <span className="label">Data de Nascimento</span>
+              <span className="value">{customer.birthDate}</span>
+            </div>
+          </div>
+        </section>
+
+        <section className="info-section">
+          <h2>Endereços</h2>
+          <div className="addresses-grid">
+            {customer.addresses.map(address => (
+              <div key={address.id} className={`address-card ${address.isDefault ? 'default' : ''}`}>
+                <div className="address-header">
+                  <h3>{address.title}</h3>
+                  {address.isDefault && <span className="default-badge">Padrão</span>}
+                </div>
+                <p>{address.street}, {address.number}</p>
+                {address.complement && <p>{address.complement}</p>}
+                <p>{address.neighborhood} - {address.city}/{address.state}</p>
+              </div>
+            ))}
           </div>
         </section>
 
@@ -193,11 +263,11 @@ const UserDetails = () => {
           <div className="info-grid">
             <div className="info-item">
               <span className="label">Data de Cadastro</span>
-              <span className="value">{new Date(customer.createdAt).toLocaleDateString('pt-BR')}</span>
+              <span className="value">{new Date(customer.createdAt.toDate()).toLocaleDateString('pt-BR')}</span>
             </div>
             <div className="info-item">
               <span className="label">Última Atualização</span>
-              <span className="value">{new Date(customer.updatedAt).toLocaleDateString('pt-BR')}</span>
+              <span className="value">{new Date(customer.updatedAt.toDate()).toLocaleDateString('pt-BR')}</span>
             </div>
             <div className="info-item">
               <span className="label">Total de Pedidos</span>
@@ -209,17 +279,50 @@ const UserDetails = () => {
             </div>
             <div className="info-item">
               <span className="label">Total de Endereços</span>
-              <span className="value">{customer._count.addresses}</span>
+              <span className="value">{customer.addresses.length}</span>
             </div>
           </div>
         </section>
 
+        <section className="info-section">
+          <h2>Informações do Dispositivo</h2>
+          <div className="info-grid">
+            <div className="info-item">
+              <span className="label">Plataforma</span>
+              <span className="value">{customer.deviceInfo.platform}</span>
+            </div>
+            <div className="info-item">
+              <span className="label">Versão</span>
+              <span className="value">{customer.deviceInfo.version}</span>
+            </div>
+            <div className="info-item">
+              <span className="label">Última Atualização</span>
+              <span className="value">
+                {new Date(customer.deviceInfo.lastUpdated.toDate()).toLocaleDateString('pt-BR')}
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {customer.usedCoupons.length > 0 && (
+          <section className="info-section">
+            <h2>Cupons Utilizados</h2>
+            <div className="coupons-grid">
+              {customer.usedCoupons.map((coupon, index) => (
+                <div key={index} className="coupon-card">
+                  {coupon}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         <div className="actions">
           <button 
             onClick={handleToggleBlock}
-            className={`block-button ${customer.isBlocked ? 'unblock' : 'block'}`}
+            className={`block-button ${customer.status === 'blocked' ? 'unblock' : 'block'}`}
           >
-            {customer.isBlocked ? 'Desbloquear Cliente' : 'Bloquear Cliente'}
+            {customer.status === 'blocked' ? 'Desbloquear Cliente' : 'Bloquear Cliente'}
           </button>
         </div>
       </div>

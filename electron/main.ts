@@ -37,11 +37,6 @@ function createWindow() {
     }, 3000)
   })
 
-  // Abre DevTools em desenvolvimento
-  if (VITE_DEV_SERVER_URL) {
-    win.webContents.openDevTools()
-  }
-
   win.webContents.on('did-finish-load', () => {
     win?.webContents.send('main-process-message', new Date().toLocaleString())
   })

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { db } from '../../config/firebase';
 import './styles.css';
 
 interface MonthlyMetrics {
@@ -43,13 +44,49 @@ const Finance = () => {
   useEffect(() => {
     const fetchMonthlyMetrics = async () => {
       try {
-        const token = localStorage.getItem('@AdminApp:token');
-        const response = await axios.get(`http://localhost:8080/api/reports/monthly-metrics?month=${selectedMonth}&year=${selectedYear}`, {
-          headers: {
-            Authorization: `Bearer ${token}`
+        // Criar timestamps para o início e fim do mês selecionado
+        const startDate = new Date(selectedYear, selectedMonth - 1, 1);
+        const endDate = new Date(selectedYear, selectedMonth, 0, 23, 59, 59);
+        
+        const startTimestamp = Timestamp.fromDate(startDate);
+        const endTimestamp = Timestamp.fromDate(endDate);
+
+        // Buscar pedidos do período
+        const ordersQuery = query(
+          collection(db, 'orders'),
+          where('createdAt', '>=', startTimestamp),
+          where('createdAt', '<=', endTimestamp)
+        );
+        
+        const ordersSnapshot = await getDocs(ordersQuery);
+        
+        // Calcular métricas
+        let grossRevenue = 0;
+        let totalDiscounts = 0;
+        let deliveryFees = 0;
+        
+        ordersSnapshot.docs.forEach(doc => {
+          const orderData = doc.data();
+          grossRevenue += orderData.subtotal || 0;
+          totalDiscounts += orderData.discount || 0;
+          deliveryFees += orderData.deliveryFee || 0;
+        });
+
+        const netRevenue = grossRevenue - totalDiscounts;
+
+        setMonthlyMetrics({
+          period: {
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString()
+          },
+          metrics: {
+            totalOrders: ordersSnapshot.size,
+            grossRevenue,
+            netRevenue,
+            totalDiscounts,
+            deliveryFees
           }
         });
-        setMonthlyMetrics(response.data);
       } catch (error) {
         console.error('Erro ao buscar métricas mensais:', error);
       }

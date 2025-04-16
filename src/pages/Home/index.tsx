@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import { collection, getDocs, query, where, Timestamp } from 'firebase/firestore';
+import { db } from '../../config/firebase';
 import './styles.css';
 
 interface DashboardData {
@@ -24,17 +25,45 @@ const Home = () => {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const token = localStorage.getItem('@AdminApp:token');
+        // Buscar todos os usuários
+        const usersSnapshot = await getDocs(collection(db, 'users'));
+        const totalCustomers = usersSnapshot.size;
+
+        // Buscar todos os estabelecimentos
+        const partnersSnapshot = await getDocs(collection(db, 'partners'));
+        const totalSellers = partnersSnapshot.size;
+
+        // Buscar pedidos do dia atual
         const today = new Date();
-        const formattedDate = today.toISOString().split('T')[0];
+        today.setHours(0, 0, 0, 0);
+        
+        const ordersQuery = query(
+          collection(db, 'orders'),
+          where('createdAt', '>=', Timestamp.fromDate(today))
+        );
+        
+        const ordersSnapshot = await getDocs(ordersQuery);
+        const orders = ordersSnapshot.docs.map(doc => ({
+          ...doc.data(),
+          id: doc.id
+        }));
 
-        const response = await axios.get(`http://localhost:8080/api/admin/dashboard?startDate=${formattedDate}&endDate=${formattedDate}`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
+        const totalOrders = orders.length;
+        const totalRevenue = orders.reduce((acc, order: any) => acc + (order.total || 0), 0);
+        const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+        // Buscar total de produtos
+        const productsSnapshot = await getDocs(collection(db, 'products'));
+        const totalProducts = productsSnapshot.size;
+
+        setDashboardData({
+          totalCustomers,
+          totalSellers,
+          totalOrders,
+          totalRevenue,
+          totalProducts,
+          averageOrderValue
         });
-
-        setDashboardData(response.data);
       } catch (error) {
         console.error('Erro ao buscar dados do dashboard:', error);
       }

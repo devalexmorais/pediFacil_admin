@@ -195,4 +195,84 @@
   .user-info {
     flex-wrap: wrap;
   }
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.profile-image {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.addresses-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  margin-top: 16px;
+}
+
+.address-card {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+  position: relative;
+  border: 1px solid #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.address-card.default {
+  background: #e8f5e9;
+  border-color: #4CAF50;
+}
+
+.address-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.address-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.default-badge {
+  background: #4CAF50;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.address-card p {
+  margin: 4px 0;
+  color: #495057;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.coupons-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.coupon-card {
+  background: #f5f5f5;
+  padding: 10px;
+  border-radius: 6px;
+  text-align: center;
+  font-weight: bold;
+  color: #333;
 } 

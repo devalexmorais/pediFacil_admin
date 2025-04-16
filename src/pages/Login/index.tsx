@@ -121,23 +121,23 @@ const Login: React.FC = () => {
             </div>
           </div>
           <div className="form-options">
-            <label className="remember-me">
+            <div className="remember-me">
               <input
                 type="checkbox"
+                id="rememberMe"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                disabled={isLoading}
               />
-              Lembrar-me
-            </label>
+              <label htmlFor="rememberMe">Lembrar-me</label>
+            </div>
             <a href="#" className="forgot-password">
               Esqueceu sua senha?
             </a>
           </div>
           <button 
             type="submit" 
-            className="login-button"
             disabled={isLoading}
+            className="login-button"
           >
             {isLoading ? 'Entrando...' : 'Entrar'}
           </button>

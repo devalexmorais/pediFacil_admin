@@ -5,6 +5,7 @@ import {
   getDocs, 
   addDoc, 
   updateDoc,
+  setDoc,
   query,
   where,
   Timestamp,
@@ -12,6 +13,7 @@ import {
   QueryDocumentSnapshot
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { auth } from '../config/firebase';
 
 export interface User {
   id: string;
@@ -93,5 +95,50 @@ export const getAllUsers = async (): Promise<User[]> => {
   } catch (error) {
     console.error('Erro ao buscar usuários:', error);
     throw new Error('Erro ao carregar usuários');
+  }
+};
+
+export const verifyAndFixUserRole = async (): Promise<void> => {
+  try {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('Usuário não autenticado');
+    }
+
+    console.log('Verificando usuário:', currentUser.uid);
+
+    const userRef = doc(db, 'users', currentUser.uid);
+    const userDoc = await getDoc(userRef);
+
+    if (!userDoc.exists()) {
+      console.log('Documento do usuário não existe, criando...');
+      await setDoc(userRef, {
+        email: currentUser.email,
+        role: 'ADMIN',
+        name: currentUser.displayName || 'Admin',
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+        isActive: true
+      });
+      console.log('Documento do usuário criado com role ADMIN');
+      return;
+    }
+
+    const userData = userDoc.data();
+    console.log('Dados atuais do usuário:', userData);
+
+    if (!userData.role || userData.role !== 'ADMIN') {
+      console.log('Atualizando role para ADMIN...');
+      await updateDoc(userRef, {
+        role: 'ADMIN',
+        updatedAt: Timestamp.now()
+      });
+      console.log('Role atualizada com sucesso');
+    } else {
+      console.log('Usuário já é ADMIN');
+    }
+  } catch (error) {
+    console.error('Erro ao verificar/corrigir role:', error);
+    throw error;
   }
 }; 

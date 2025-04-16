@@ -138,13 +138,13 @@
   font-weight: 600;
 }
 
-.status-badge.ativo {
-  background: #dcfce7;
+.status-badge.open {
+  background-color: #dcfce7;
   color: #16a34a;
 }
 
-.status-badge.inativo {
-  background: #fee2e2;
+.status-badge.closed {
+  background-color: #fee2e2;
   color: #dc2626;
 }
 
@@ -204,7 +204,7 @@
 }
 
 .action-btn.block {
-  background: #fee2e2;
+  background-color: #fee2e2;
   color: #dc2626;
 }
 
@@ -213,7 +213,7 @@
 }
 
 .action-btn.unblock {
-  background: #dcfce7;
+  background-color: #dcfce7;
   color: #16a34a;
 }
 

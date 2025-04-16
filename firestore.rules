@@ -10,6 +10,12 @@ service cloud.firestore {
     function isAuthenticated() {
       return request.auth != null;
     }
+
+    // Função para verificar se o usuário é administrador
+    function isAdmin() {
+      let user = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return request.auth != null && user != null && user.data != null && user.data.role == 'ADMIN';
+    }
     
     // Regras para cupons
     match /coupons/{couponId} {
@@ -78,7 +84,14 @@ service cloud.firestore {
     // Regras específicas para parceiros
     match /partners/{partnerId} {
       allow read: if true;
-      allow create, update, delete: if isOwner(partnerId);
+      allow create: if isOwner(partnerId);
+      allow update: if (
+        isOwner(partnerId) || 
+        (isAdmin() && 
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isActive', 'lastUpdated']) ||
+           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastUpdated', 'isActive'])))
+      );
+      allow delete: if isOwner(partnerId);
       
       // Regras para cupons
       match /coupons/{couponId} {

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { db } from '../../config/firebase';
 import './styles.css';
 
 interface DashboardData {
@@ -33,43 +35,59 @@ const Reports: React.FC = () => {
 
   const fetchDashboard = async () => {
     try {
-      const token = localStorage.getItem('@AdminApp:token');
-      
-      if (!token) {
-        alert('Token não encontrado. Por favor, faça login novamente.');
-        window.location.href = '/login';
-        return;
-      }
-
       setIsLoading(true);
-      const formattedStartDate = formatDateForApi(startDate);
-      const formattedEndDate = formatDateForApi(endDate);
       
-      const response = await fetch(
-        `http://localhost:8080/api/admin/dashboard?startDate=${formattedStartDate}&endDate=${formattedEndDate}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        }
+      // Converter datas para Timestamp do Firestore
+      const startTimestamp = Timestamp.fromDate(new Date(startDate));
+      const endTimestamp = Timestamp.fromDate(new Date(endDate));
+
+      // Buscar usuários
+      const usersQuery = query(
+        collection(db, 'users'),
+        where('createdAt', '>=', startTimestamp),
+        where('createdAt', '<=', endTimestamp)
       );
+      const usersSnapshot = await getDocs(usersQuery);
+      
+      const customers = usersSnapshot.docs.filter(doc => doc.data().role === 'CUSTOMER');
+      const sellers = usersSnapshot.docs.filter(doc => doc.data().role === 'SELLER');
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Resposta da API:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorText
-        });
-        throw new Error(`Erro ao buscar dashboard: Status ${response.status} - ${errorText}`);
-      }
+      // Buscar produtos
+      const productsQuery = query(
+        collection(db, 'products'),
+        where('createdAt', '>=', startTimestamp),
+        where('createdAt', '<=', endTimestamp)
+      );
+      const productsSnapshot = await getDocs(productsQuery);
 
-      const data = await response.json();
-      console.log('Dados do dashboard:', data);
-      setDashboard(data);
+      // Buscar pedidos
+      const ordersQuery = query(
+        collection(db, 'orders'),
+        where('createdAt', '>=', startTimestamp),
+        where('createdAt', '<=', endTimestamp)
+      );
+      const ordersSnapshot = await getDocs(ordersQuery);
+      
+      // Calcular métricas de pedidos
+      let totalRevenue = 0;
+      ordersSnapshot.docs.forEach(doc => {
+        const orderData = doc.data();
+        totalRevenue += orderData.total || 0;
+      });
+
+      const averageOrderValue = ordersSnapshot.size > 0 
+        ? totalRevenue / ordersSnapshot.size 
+        : 0;
+
+      setDashboard({
+        totalCustomers: customers.length,
+        totalSellers: sellers.length,
+        totalOrders: ordersSnapshot.size,
+        totalRevenue,
+        totalProducts: productsSnapshot.size,
+        averageOrderValue
+      });
+
     } catch (error: any) {
       console.error('Erro detalhado:', error);
       alert(`Erro ao carregar dashboard: ${error?.message || 'Erro desconhecido'}`);

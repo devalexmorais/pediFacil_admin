@@ -12,7 +12,8 @@ import {
   query,
   orderBy,
   where,
-  Timestamp
+  Timestamp,
+  collectionGroup
 } from 'firebase/firestore';
 
 interface Coupon {
@@ -178,10 +179,57 @@ const Coupons: React.FC = () => {
       try {
         const docRef = await addDoc(couponsRef, couponData);
         console.log('7. Cupom criado com sucesso! ID:', docRef.id);
+
+        // Criar notificação para todos os usuários
+        const usersRef = collection(db, 'users');
+        const usersSnapshot = await getDocs(usersRef);
+
+        const notificationPromises = usersSnapshot.docs.map(async (userDoc) => {
+          const userNotificationsRef = collection(doc(db, 'users', userDoc.id), 'notifications');
+          
+          const notificationData = {
+            title: `Novo cupom: ${couponData.code}`,
+            body: `Use ${couponData.code} até ${
+              couponData.validUntil ? 
+              couponData.validUntil.toDate().toLocaleDateString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+              }) : 
+              'tempo indeterminado'
+            } e ganhe ${
+              couponData.type === 'percentage' ? 
+              `${couponData.value}% OFF` : 
+              `R$ ${couponData.value.toFixed(2)} OFF`
+            }${
+              couponData.maxDiscount > 0 ? 
+              ` (máx: R$ ${couponData.maxDiscount.toFixed(2)})` : 
+              ''
+            }`,
+            createdAt: Timestamp.now(),
+            data: {
+              couponId: docRef.id,
+              couponCode: couponData.code,
+              type: couponData.type,
+              value: couponData.value,
+              maxDiscount: couponData.maxDiscount,
+              validUntil: couponData.validUntil,
+              validForFirstOrder: couponData.validForFirstOrder
+            },
+            type: "coupon_created",
+            read: false
+          };
+
+          return addDoc(userNotificationsRef, notificationData);
+        });
+
+        await Promise.all(notificationPromises);
+        console.log('8. Notificações criadas com sucesso!');
         
         alert('Cupom criado com sucesso!');
         
-        console.log('8. Limpando formulário');
+        console.log('9. Limpando formulário');
         setFormData({
           code: '',
           type: 'percentage',
@@ -192,7 +240,7 @@ const Coupons: React.FC = () => {
         });
         
         setIsModalOpen(false);
-        console.log('9. Atualizando lista de cupons');
+        console.log('10. Atualizando lista de cupons');
         await fetchCoupons();
 
       } catch (firestoreError: any) {
@@ -207,7 +255,7 @@ const Coupons: React.FC = () => {
       console.error('Stack trace:', error.stack);
       alert(`Erro ao criar cupom: ${error.message}`);
     } finally {
-      console.log('10. Finalizando processo');
+      console.log('11. Finalizando processo');
       setIsLoading(false);
     }
   };

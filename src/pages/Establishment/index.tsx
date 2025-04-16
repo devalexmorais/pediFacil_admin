@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAllSellers, toggleSellerBlock, type Seller } from '../../services/sellerServices';
+import { verifyAndFixUserRole } from '../../services/userServices';
 import './styles.css';
 
 const Establishment = () => {
@@ -10,6 +11,7 @@ const Establishment = () => {
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -20,7 +22,7 @@ const Establishment = () => {
     try {
       setLoading(true);
       const sellersData = await getAllSellers();
-      console.log('Dados recebidos do Firebase:', sellersData);
+      console.log('Dados dos estabelecimentos:', JSON.stringify(sellersData, null, 2));
       setSellers(sellersData || []);
     } catch (err) {
       console.error('Erro detalhado:', err);
@@ -35,29 +37,46 @@ const Establishment = () => {
     if (!seller) return;
 
     try {
-      await toggleSellerBlock(id, seller.isBlocked);
-      // Atualiza a lista de estabelecimentos após o bloqueio/desbloqueio
-      await loadSellers();
+      const confirmMessage = seller.isActive 
+        ? `Tem certeza que deseja bloquear o estabelecimento "${seller.store.name}"?`
+        : `Tem certeza que deseja desbloquear o estabelecimento "${seller.store.name}"?`;
+
+      if (window.confirm(confirmMessage)) {
+        try {
+          // Tenta primeiro verificar e corrigir as permissões
+          await verifyAndFixUserRole();
+          // Se der certo, tenta fazer o toggle
+          await toggleSellerBlock(id, seller.isActive);
+          await loadSellers();
+        } catch (permissionError) {
+          console.error('Erro de permissão:', permissionError);
+          alert('Você não tem permissão para realizar esta ação. Apenas administradores podem bloquear/desbloquear estabelecimentos.');
+        }
+      }
     } catch (err: any) {
       console.error('Erro ao atualizar status:', err);
       alert(err.message || 'Erro ao alterar status do estabelecimento. Tente novamente.');
     }
   };
 
-  const filteredSellers = sellers.filter(seller =>
-    seller.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    seller.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    seller.cnpj_or_cpf.includes(searchTerm)
-  );
+  const filteredSellers = sellers.filter(seller => {
+    const matchesSearch = 
+      seller.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      seller.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      seller.store.document.includes(searchTerm);
+
+    const matchesStatus = 
+      statusFilter === '' || 
+      (statusFilter === 'open' && seller.isOpen) ||
+      (statusFilter === 'closed' && !seller.isOpen);
+
+    return matchesSearch && matchesStatus;
+  });
 
   const totalPages = Math.ceil(filteredSellers.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentSellers = filteredSellers.slice(startIndex, endIndex);
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
 
   if (loading) {
     return (
@@ -88,22 +107,32 @@ const Establishment = () => {
         <div className="search-filters">
           <input
             type="text"
-            placeholder="Buscar por nome, email ou CNPJ..."
+            placeholder="Buscar por nome, email ou documento..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input"
           />
-          <select className="filter-select">
+          <select 
+            className="filter-select"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
             <option value="">Todos os status</option>
-            <option value="active">Ativos</option>
-            <option value="blocked">Bloqueados</option>
+            <option value="open">Aberto</option>
+            <option value="closed">Fechado</option>
           </select>
         </div>
       </div>
 
-      {searchTerm && (
+      {(searchTerm || statusFilter) && (
         <div className="filter-summary">
-          <button className="clear-filters" onClick={() => setSearchTerm('')}>
+          <button 
+            className="clear-filters" 
+            onClick={() => {
+              setSearchTerm('');
+              setStatusFilter('');
+            }}
+          >
             Limpar filtros
           </button>
         </div>
@@ -114,59 +143,53 @@ const Establishment = () => {
           <thead>
             <tr>
               <th>Nome</th>
-              <th>CNPJ/CPF</th>
+              <th>Documento</th>
               <th>Email</th>
               <th>Telefone</th>
-              <th>Endereço</th>
-              <th>Status</th>
-              <th>Pedidos</th>
-              <th>Avaliações</th>
+              <th>Status de Funcionamento</th>
               <th>Cadastro</th>
               <th>Ações</th>
             </tr>
           </thead>
           <tbody>
-            {currentSellers.map(seller => (
-              <tr key={seller.id}>
-                <td>{seller.storeName}</td>
-                <td>{seller.cnpj_or_cpf}</td>
-                <td>{seller.email}</td>
-                <td>{seller.phone}</td>
-                <td>{`${seller.street}, ${seller.number}`}</td>
-                <td>
-                  <span className={`status-badge ${seller.isBlocked ? 'inactive' : 'active'}`}>
-                    {seller.isBlocked ? 'Bloqueado' : 'Ativo'}
-                  </span>
-                </td>
-                <td className="count-cell">
-                  <span className="count-badge orders">
-                    {seller._count.orders}
-                  </span>
-                </td>
-                <td className="count-cell">
-                  <span className="count-badge reviews">
-                    {seller._count.reviews}
-                  </span>
-                </td>
-                <td>{seller.createdAt.toDate().toLocaleDateString('pt-BR')}</td>
-                <td>
-                  <div className="action-buttons">
-                    <button
-                      onClick={() => navigate(`/establishment/${seller.id}`)}
-                      className="action-btn view"
-                    >
-                      Visualizar
-                    </button>
-                    <button
-                      onClick={() => handleToggleStatus(seller.id)}
-                      className={`action-btn ${seller.isBlocked ? 'unblock' : 'block'}`}
-                    >
-                      {seller.isBlocked ? 'Desbloquear' : 'Bloquear'}
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {currentSellers.map(seller => {
+              const isOpenStatus = Boolean(seller.isOpen);
+              console.log('Status do estabelecimento:', {
+                nome: seller.store.name,
+                isOpen: seller.isOpen,
+                isOpenBoolean: isOpenStatus,
+                rawData: seller
+              });
+              return (
+                <tr key={seller.id}>
+                  <td>{seller.store.name}</td>
+                  <td>{seller.email}</td>
+                  <td>{seller.phone}</td>
+                  <td>
+                    <span className={`status-badge ${isOpenStatus ? 'open' : 'closed'}`}>
+                      {isOpenStatus ? 'Aberto' : 'Fechado'}
+                    </span>
+                  </td>
+                  <td>{new Date(seller.createdAt.seconds * 1000).toLocaleDateString('pt-BR')}</td>
+                  <td>
+                    <div className="action-buttons">
+                      <button
+                        onClick={() => navigate(`/establishment/${seller.id}`)}
+                        className="action-btn view"
+                      >
+                        Visualizar
+                      </button>
+                      <button
+                        className={`action-btn ${seller.isActive ? 'block' : 'unblock'}`}
+                        onClick={() => handleToggleStatus(seller.id)}
+                      >
+                        {seller.isActive ? 'Bloquear' : 'Desbloquear'}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -174,7 +197,7 @@ const Establishment = () => {
       {totalPages > 1 && (
         <div className="pagination">
           <button
-            onClick={() => handlePageChange(currentPage - 1)}
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
             disabled={currentPage === 1}
             className="pagination-button"
           >
@@ -184,7 +207,7 @@ const Establishment = () => {
             Página {currentPage} de {totalPages}
           </span>
           <button
-            onClick={() => handlePageChange(currentPage + 1)}
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
             disabled={currentPage === totalPages}
             className="pagination-button"
           >
