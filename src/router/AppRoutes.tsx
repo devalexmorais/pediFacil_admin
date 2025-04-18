@@ -10,9 +10,7 @@ import Cities from '../pages/Cities';
 import Banners from '../pages/Banners';
 import Categories from '../pages/Categories';
 import Finance from '../pages/Finance';
-import Notifications from '../pages/Notifications';
 import Plans from '../pages/Plans';
-import Reports from '../pages/Reports';
 import UserDetails from '../pages/UserDetails';
 import Coupons from '../pages/Coupons';
 import CityDistricts from '../pages/CityDistricts';
@@ -84,19 +82,9 @@ const AppRoutes = () => {
           <Finance />
         </PrivateRoute>
       } />
-      <Route path="/Notifications" element={
-        <PrivateRoute>
-          <Notifications />
-        </PrivateRoute>
-      } />
       <Route path="/Plans" element={
         <PrivateRoute>
           <Plans />
-        </PrivateRoute>
-      } />
-      <Route path="/Reports" element={
-        <PrivateRoute>
-          <Reports />
         </PrivateRoute>
       } />
       <Route path="/Coupons" element={

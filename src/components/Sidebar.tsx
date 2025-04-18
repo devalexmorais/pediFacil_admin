@@ -60,22 +60,10 @@ const Sidebar = () => {
           Financeiro
         </Link>
         <Link
-          to="/Notifications"
-          className={location.pathname === '/Notifications' ? 'active' : ''}
-        >
-          Notificações
-        </Link>
-        <Link
           to="/Plans"
           className={location.pathname === '/Plans' ? 'active' : ''}
         >
           Planos
-        </Link>
-        <Link
-          to="/Reports"
-          className={location.pathname === '/Reports' ? 'active' : ''}
-        >
-          Relatórios
         </Link>
         <Link
           to="/Coupons"

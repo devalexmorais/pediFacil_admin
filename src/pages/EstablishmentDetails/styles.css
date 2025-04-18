@@ -928,4 +928,138 @@
 .status-badge.closed {
   background: #ffebee;
   color: #f44336;
+}
+
+.invoices-table {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 1rem;
+}
+
+.invoices-table table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.invoices-table th,
+.invoices-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.invoices-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #495057;
+}
+
+.invoices-table tr:last-child td {
+  border-bottom: none;
+}
+
+.invoices-table tr:hover {
+  background-color: #f8f9fa;
+}
+
+.no-invoices {
+  text-align: center;
+  color: #6c757d;
+  padding: 2rem;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: inline-block;
+}
+
+.status-paid {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-late {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.status-pending {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.billing-init-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.billing-init-container p {
+  color: #6c757d;
+  margin: 0;
+}
+
+.billing-actions {
+  margin-bottom: 20px;
+  display: flex;
+  gap: 10px;
+}
+
+.initialize-billing-button,
+.generate-invoice-button {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.initialize-billing-button:hover,
+.generate-invoice-button:hover {
+  background-color: #45a049;
+}
+
+.initialize-billing-button:disabled,
+.generate-invoice-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.check-fees-button {
+  background-color: #2196F3;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.check-fees-button:hover {
+  background-color: #1976D2;
+}
+
+.check-fees-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
 } 

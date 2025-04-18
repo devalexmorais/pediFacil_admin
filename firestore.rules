@@ -14,7 +14,11 @@ service cloud.firestore {
     // Função para verificar se o usuário é administrador
     function isAdmin() {
       let user = get(/databases/$(database)/documents/users/$(request.auth.uid));
-      return request.auth != null && user != null && user.data != null && user.data.role == 'ADMIN';
+      return request.auth != null && 
+             user != null && 
+             user.data != null && 
+             ('role' in user.data) && 
+             user.data.role == 'ADMIN';
     }
     
     // Regras para cupons
@@ -89,7 +93,8 @@ service cloud.firestore {
         isOwner(partnerId) || 
         (isAdmin() && 
           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isActive', 'lastUpdated']) ||
-           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastUpdated', 'isActive'])))
+           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastUpdated', 'isActive']))
+        )
       );
       allow delete: if isOwner(partnerId);
       
@@ -131,8 +136,8 @@ service cloud.firestore {
       }
       
       match /app_fees/{feeId} {
-        allow read: if true;
-        allow create, update, delete: if isOwner(partnerId);
+        allow read: if isAuthenticated() && (isOwner(partnerId) || isAdmin());
+        allow create, update, delete: if isAdmin();
       }
       
       match /products/{productId} {
@@ -143,6 +148,17 @@ service cloud.firestore {
       match /categories/{categoryId} {
         allow read: if true;
         allow create, update, delete: if isOwner(partnerId);
+      }
+
+      // Subcoleções de partners
+      match /billing_control/{docId} {
+        allow read: if isAuthenticated() && (isOwner(partnerId) || isAdmin());
+        allow create, update, delete: if isAdmin();
+      }
+      
+      match /invoices/{invoiceId} {
+        allow read: if isAuthenticated() && (isOwner(partnerId) || isAdmin());
+        allow create, update, delete: if isAdmin();
       }
     }
     

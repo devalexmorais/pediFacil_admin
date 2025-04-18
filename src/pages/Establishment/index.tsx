@@ -22,7 +22,6 @@ const Establishment = () => {
     try {
       setLoading(true);
       const sellersData = await getAllSellers();
-      console.log('Dados dos estabelecimentos:', JSON.stringify(sellersData, null, 2));
       setSellers(sellersData || []);
     } catch (err) {
       console.error('Erro detalhado:', err);
@@ -121,100 +120,125 @@ const Establishment = () => {
             <option value="open">Aberto</option>
             <option value="closed">Fechado</option>
           </select>
+          {(searchTerm || statusFilter) && (
+            <button 
+              className="clear-filters" 
+              onClick={() => {
+                setSearchTerm('');
+                setStatusFilter('');
+              }}
+            >
+              Limpar filtros
+            </button>
+          )}
         </div>
       </div>
-
-      {(searchTerm || statusFilter) && (
-        <div className="filter-summary">
-          <button 
-            className="clear-filters" 
-            onClick={() => {
-              setSearchTerm('');
-              setStatusFilter('');
-            }}
-          >
-            Limpar filtros
-          </button>
-        </div>
-      )}
 
       <div className="table-container">
-        <table className="establishments-table">
-          <thead>
-            <tr>
-              <th>Nome</th>
-              <th>Documento</th>
-              <th>Email</th>
-              <th>Telefone</th>
-              <th>Status de Funcionamento</th>
-              <th>Cadastro</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentSellers.map(seller => {
-              const isOpenStatus = Boolean(seller.isOpen);
-              console.log('Status do estabelecimento:', {
-                nome: seller.store.name,
-                isOpen: seller.isOpen,
-                isOpenBoolean: isOpenStatus,
-                rawData: seller
-              });
-              return (
-                <tr key={seller.id}>
-                  <td>{seller.store.name}</td>
-                  <td>{seller.email}</td>
-                  <td>{seller.phone}</td>
-                  <td>
-                    <span className={`status-badge ${isOpenStatus ? 'open' : 'closed'}`}>
-                      {isOpenStatus ? 'Aberto' : 'Fechado'}
-                    </span>
-                  </td>
-                  <td>{new Date(seller.createdAt.seconds * 1000).toLocaleDateString('pt-BR')}</td>
-                  <td>
-                    <div className="action-buttons">
-                      <button
-                        onClick={() => navigate(`/establishment/${seller.id}`)}
-                        className="action-btn view"
-                      >
-                        Visualizar
-                      </button>
-                      <button
-                        className={`action-btn ${seller.isActive ? 'block' : 'unblock'}`}
-                        onClick={() => handleToggleStatus(seller.id)}
-                      >
-                        {seller.isActive ? 'Bloquear' : 'Desbloquear'}
-                      </button>
-                    </div>
-                  </td>
+        {loading ? (
+          <div className="loading-container">
+            <div className="loading-spinner"></div>
+            <p>Carregando estabelecimentos...</p>
+          </div>
+        ) : error ? (
+          <div className="error-container">
+            <p>{error}</p>
+            <button onClick={loadSellers} className="retry-button">
+              Tentar novamente
+            </button>
+          </div>
+        ) : currentSellers.length === 0 ? (
+          <div className="empty-state">
+            <p>Nenhum estabelecimento encontrado.</p>
+          </div>
+        ) : (
+          <>
+            <table className="establishments-table">
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>Documento</th>
+                  <th>Email</th>
+                  <th>Telefone</th>
+                  <th style={{width: '100px', position: 'relative', zIndex: 5}}>Status</th>
+                  <th>Plano</th>
+                  <th>Cadastro</th>
+                  <th>Ações</th>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              </thead>
+              <tbody>
+                {currentSellers.map(seller => {
+                  const isOpenStatus = seller.isOpen === true;
+                  
+                  return (
+                    <tr key={seller.id}>
+                      <td>{seller.store.name}</td>
+                      <td>
+                        {seller.store.document ? 
+                          `***${seller.store.document.slice(-3)}` : 
+                          '---'}
+                      </td>
+                      <td>{seller.email}</td>
+                      <td>{seller.phone}</td>
+                      <td>
+                        {seller.isOpen ? (
+                          <span style={{ color: '#16a34a', fontWeight: 'bold' }}>ABERTO</span>
+                        ) : (
+                          <span style={{ color: '#dc2626', fontWeight: 'bold' }}>FECHADO</span>
+                        )}
+                      </td>
+                      <td>
+                        <span className={`plan-badge ${seller.store.isPremium ? 'premium' : 'basic'}`}>
+                          {seller.store.isPremium ? 'Premium' : 'Básico'}
+                        </span>
+                      </td>
+                      <td>{new Date(seller.createdAt.seconds * 1000).toLocaleDateString('pt-BR')}</td>
+                      <td>
+                        <div className="action-buttons">
+                          <button
+                            onClick={() => navigate(`/establishment/${seller.id}`)}
+                            className="action-btn view"
+                          >
+                            Visualizar
+                          </button>
+                          <button
+                            className={`action-btn ${seller.isActive ? 'block' : 'unblock'}`}
+                            onClick={() => handleToggleStatus(seller.id)}
+                          >
+                            {seller.isActive ? 'Bloquear' : 'Desbloquear'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            
+            {totalPages > 1 && (
+              <div className="pagination">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="pagination-button"
+                >
+                  Anterior
+                </button>
+                <span className="pagination-info">
+                  {startIndex + 1}-{Math.min(endIndex, filteredSellers.length)} de {filteredSellers.length}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="pagination-button"
+                >
+                  Próxima
+                </button>
+              </div>
+            )}
+          </>
+        )}
       </div>
-
-      {totalPages > 1 && (
-        <div className="pagination">
-          <button
-            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className="pagination-button"
-          >
-            Anterior
-          </button>
-          <span className="pagination-info">
-            Página {currentPage} de {totalPages}
-          </span>
-          <button
-            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-            disabled={currentPage === totalPages}
-            className="pagination-button"
-          >
-            Próxima
-          </button>
-        </div>
-      )}
     </div>
   );
 };

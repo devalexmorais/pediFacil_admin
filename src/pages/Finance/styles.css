@@ -1,48 +1,67 @@
 .finance-container {
   padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .header-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 16px;
 }
 
 .header-content h1 {
-  font-size: 24px;
+  font-size: 28px;
   color: #2c3e50;
+  font-weight: 600;
+  margin: 0;
 }
 
 .header-actions {
   display: flex;
   gap: 16px;
+  align-items: center;
 }
 
 .period-select {
-  padding: 8px 16px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
+  padding: 10px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
   font-size: 14px;
-  min-width: 150px;
+  min-width: 180px;
+  background-color: white;
+  color: #333;
+  font-weight: 500;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.period-select:focus {
+  outline: none;
+  border-color: #2196F3;
+  box-shadow: 0 1px 3px rgba(33, 150, 243, 0.2);
 }
 
 .export-button {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
+  padding: 10px 16px;
   background-color: #4CAF50;
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   font-weight: 600;
-  transition: background-color 0.3s;
+  transition: all 0.2s ease;
 }
 
 .export-button:hover {
   background-color: #45a049;
+  transform: translateY(-1px);
 }
 
 .cities-tabs {
@@ -77,55 +96,71 @@
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 24px;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
 }
 
 .metric-card {
   background: white;
   padding: 24px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .metric-card h3 {
   margin: 0 0 16px 0;
   color: #666;
-  font-size: 14px;
+  font-size: 16px;
+  font-weight: 500;
 }
 
 .metric-value {
-  font-size: 24px;
-  font-weight: 600;
-  color: #2c3e50;
+  font-size: 28px;
+  font-weight: 700;
+  color: #1a1a1a;
   margin-bottom: 8px;
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
 }
 
 .metric-subtitle {
-  font-size: 12px;
+  font-size: 13px;
   color: #666;
+  font-weight: 400;
 }
 
 .details-grid {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 24px;
+  margin-top: 32px;
 }
 
 .payments-card,
 .summary-card {
   background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   padding: 24px;
+  margin-bottom: 24px;
 }
 
 .payments-card h3,
 .summary-card h3 {
   margin: 0 0 24px 0;
   color: #2c3e50;
-  font-size: 18px;
+  font-size: 20px;
+  font-weight: 600;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .payments-table-container {
@@ -178,16 +213,27 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 0;
-  border-bottom: 1px solid #eee;
-  font-size: 14px;
+  border-bottom: 1px solid #f6f6f6;
+  font-size: 15px;
   color: #666;
 }
 
 .summary-item.total {
   border-bottom: 2px solid #2c3e50;
-  font-weight: 600;
+  margin-top: 8px;
+  padding-top: 8px;
+  font-weight: 700;
   color: #2c3e50;
-  font-size: 16px;
+  font-size: 18px;
+}
+
+.summary-item.section-divider {
+  margin-top: 24px;
+  padding-top: 8px;
+  border-top: 1px dashed #e0e0e0;
+  border-bottom: none;
+  font-weight: 500;
+  color: #666;
 }
 
 .summary-item.pending {
@@ -195,15 +241,120 @@
   font-weight: 600;
 }
 
+.summary-item.expense {
+  color: #DC3545;
+  font-weight: 500;
+}
+
+.summary-item.expense span:last-child {
+  color: #DC3545;
+}
+
+/* Estilos para indicadores de carregamento */
+.loading {
+  font-size: 14px;
+  color: #666;
+  font-style: italic;
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  font-size: 16px;
+  color: #666;
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin: 24px 0;
+  padding: 24px;
+  text-align: center;
+}
+
+/* Estilos para informações de debug */
+.debug-info {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+  overflow: auto;
+}
+
+.debug-info h3 {
+  margin-top: 0;
+  color: #495057;
+  font-size: 16px;
+}
+
+.debug-info pre {
+  background-color: #e9ecef;
+  border-radius: 4px;
+  padding: 8px;
+  white-space: pre-wrap;
+  font-family: monospace;
+  font-size: 12px;
+  color: #212529;
+  max-height: 300px;
+  overflow: auto;
+}
+
+/* Estilos para o aviso de índice do Firebase */
+.firebase-index-notice {
+  background-color: #fff3cd;
+  border: 1px solid #ffeeba;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+  color: #856404;
+}
+
+.firebase-index-notice p {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.firebase-index-notice a {
+  display: inline-block;
+  background-color: #007bff;
+  color: white;
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-weight: 500;
+  margin-top: 8px;
+  transition: background-color 0.3s;
+}
+
+.firebase-index-notice a:hover {
+  background-color: #0069d9;
+  text-decoration: none;
+}
+
 @media (max-width: 1024px) {
-  .details-grid {
-    grid-template-columns: 1fr;
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (max-width: 768px) {
   .dashboard-grid {
     grid-template-columns: 1fr;
+  }
+  
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .header-actions {
+    width: 100%;
+  }
+  
+  .period-select {
+    width: 100%;
   }
 }
 
@@ -449,4 +600,49 @@
 .cancel-schedule-button:hover {
   background-color: #fecaca;
   transform: translateY(-1px);
+}
+
+/* Cores específicas para os cards de métricas */
+.metric-card.revenue {
+  border-left: 4px solid #4CAF50;
+}
+
+.metric-card.orders {
+  border-left: 4px solid #2196F3;
+}
+
+.metric-card.average-ticket {
+  border-left: 4px solid #00BCD4;
+}
+
+.metric-card.premium {
+  border-left: 4px solid #FF9800;
+}
+
+.metric-card.net {
+  border-left: 4px solid #9C27B0;
+}
+
+.metric-card.subscriptions {
+  border-left: 4px solid #E91E63;
+}
+
+.chart-card {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-top: 20px;
+}
+
+.chart-card h3 {
+  margin: 0 0 20px 0;
+  color: #333;
+  font-size: 1.2rem;
+}
+
+.chart-container {
+  width: 100%;
+  height: 100%;
+  min-height: 300px;
 } 

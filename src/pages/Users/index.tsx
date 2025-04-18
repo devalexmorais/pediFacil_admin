@@ -69,7 +69,6 @@ const Users = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchText, setSearchText] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -185,23 +184,13 @@ const Users = () => {
       customer.email.toLowerCase().includes(searchText.toLowerCase()) ||
       customer.cpf.includes(searchText);
 
-    const matchesStatus = 
-      !selectedStatus || 
-      (selectedStatus === 'Inativo' && customer.status === 'blocked') ||
-      (selectedStatus === 'Ativo' && customer.status === 'active');
-
-    return matchesSearch && matchesStatus;
+    return matchesSearch;
   });
 
   const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentCustomers = filteredCustomers.slice(startIndex, endIndex);
-
-  const handleClearFilters = () => {
-    setSearchText('');
-    setSelectedStatus('');
-  };
 
   if (loading) {
     return (
@@ -238,22 +227,13 @@ const Users = () => {
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
           />
-          <select 
-            className="filter-select"
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-          >
-            <option value="">Todos os status</option>
-            <option value="Ativo">Ativo</option>
-            <option value="Inativo">Bloqueado</option>
-          </select>
         </div>
 
-        {(searchText || selectedStatus) && (
+        {searchText && (
           <div className="filter-summary">
             <button 
               className="clear-filters"
-              onClick={handleClearFilters}
+              onClick={() => setSearchText('')}
             >
               Limpar Filtros
             </button>
@@ -269,10 +249,8 @@ const Users = () => {
               <th>Email</th>
               <th>Telefone</th>
               <th>CPF</th>
-              <th>Status</th>
               <th>Pedidos</th>
               <th>Avaliações</th>
-              <th>Endereços</th>
               <th>Cadastro</th>
               <th>Ações</th>
             </tr>
@@ -295,11 +273,6 @@ const Users = () => {
                 <td>{customer.email}</td>
                 <td>{customer.phone}</td>
                 <td>{formatCPF(customer.cpf)}</td>
-                <td>
-                  <span className={`status-badge ${customer.status === 'blocked' ? 'inactive' : 'active'}`}>
-                    {customer.status === 'blocked' ? 'Bloqueado' : 'Ativo'}
-                  </span>
-                </td>
                 <td className="count-cell">
                   <span className="count-badge orders">
                     {customer._count.orders}
@@ -308,11 +281,6 @@ const Users = () => {
                 <td className="count-cell">
                   <span className="count-badge reviews">
                     {customer._count.reviews}
-                  </span>
-                </td>
-                <td className="count-cell">
-                  <span className="count-badge addresses">
-                    {customer.addresses.length}
                   </span>
                 </td>
                 <td>{new Date(customer.createdAt.toDate()).toLocaleDateString('pt-BR')}</td>

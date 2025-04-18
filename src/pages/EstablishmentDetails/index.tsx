@@ -2,7 +2,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
+import { getStoreInvoices, Invoice } from '../../services/invoiceService';
+import { checkBillingControl, initializeBillingControl, } from '../../services/billingService';
 import './styles.css';
+
 
 interface Seller {
   id: string;
@@ -70,14 +73,29 @@ const EstablishmentDetails = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const [establishment, setEstablishment] = useState<Seller | null>(null);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [hasBillingControl, setHasBillingControl] = useState(false);
+  const [initializingBilling, setInitializingBilling] = useState(false);
 
   useEffect(() => {
     if (id) {
       loadEstablishmentDetails();
+      loadInvoices();
+      checkBillingControlExists();
     }
   }, [id]);
+
+  const loadInvoices = async () => {
+    if (!id) return;
+    try {
+      const storeInvoices = await getStoreInvoices(id);
+      setInvoices(storeInvoices);
+    } catch (error) {
+      console.error('Erro ao carregar faturas:', error);
+    }
+  };
 
   const loadEstablishmentDetails = async () => {
     if (!id) return;
@@ -146,6 +164,67 @@ const EstablishmentDetails = () => {
     }
   };
 
+  const checkBillingControlExists = async () => {
+    if (!id) return;
+    try {
+      console.log('Verificando billing control para estabelecimento:', id);
+      const exists = await checkBillingControl(id);
+      console.log('Billing control existe?', exists);
+      setHasBillingControl(exists);
+    } catch (error) {
+      console.error('Erro ao verificar controle de faturamento:', error);
+    }
+  };
+
+  const handleInitializeBilling = async () => {
+    if (!id) {
+      console.error('ID do estabelecimento não disponível');
+      alert('Erro: ID do estabelecimento não disponível');
+      return;
+    }
+
+    try {
+      console.log('Iniciando inicialização do billing control para:', id);
+      setInitializingBilling(true);
+      setError('');
+
+      await initializeBillingControl(id);
+      console.log('Billing control inicializado com sucesso');
+      
+      // Verificar se foi realmente criado
+      const exists = await checkBillingControl(id);
+      if (!exists) {
+        throw new Error('Billing control não foi criado corretamente');
+      }
+      
+      setHasBillingControl(true);
+      // Recarregar faturas após inicialização
+      await loadInvoices();
+    } catch (err: any) {
+      console.error('Erro detalhado ao inicializar faturamento:', {
+        error: err,
+        message: err.message,
+        code: err.code,
+        stack: err.stack
+      });
+      
+      // Mostrar mensagem de erro apropriada para o usuário
+      let errorMessage = 'Erro ao inicializar faturamento. ';
+      if (err.message?.includes('permission-denied')) {
+        errorMessage += 'Você não tem permissão para realizar esta ação.';
+      } else if (err.message?.includes('not-found')) {
+        errorMessage += 'Estabelecimento não encontrado.';
+      } else {
+        errorMessage += err.message || 'Por favor, tente novamente.';
+      }
+      
+      setError(errorMessage);
+      alert(errorMessage);
+    } finally {
+      setInitializingBilling(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="loading-container">
@@ -165,6 +244,39 @@ const EstablishmentDetails = () => {
       </div>
     );
   }
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('pt-BR');
+  };
+
+  const formatCurrency = (value: number) => {
+    return value.toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    });
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pago':
+        return 'status-paid';
+      case 'atrasado':
+        return 'status-late';
+      default:
+        return 'status-pending';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'pago':
+        return 'Pago';
+      case 'atrasado':
+        return 'Atrasado';
+      default:
+        return 'Pendente';
+    }
+  };
 
   return (
     <div className="establishment-details">
@@ -338,6 +450,57 @@ const EstablishmentDetails = () => {
               </span>
             </div>
           </div>
+        </section>
+
+        <section className="info-section">
+          <h2>Faturas</h2>
+          {!hasBillingControl ? (
+            <div className="billing-init-container">
+              <p>O controle de faturamento ainda não foi inicializado para este estabelecimento.</p>
+              <button 
+                className="initialize-billing-button"
+                onClick={handleInitializeBilling}
+                disabled={initializingBilling}
+              >
+                {initializingBilling ? 'Inicializando...' : 'Inicializar Controle de Faturamento'}
+              </button>
+            </div>
+          ) : (
+            <>
+              {invoices.length === 0 ? (
+                <p className="no-invoices">Nenhuma fatura encontrada</p>
+              ) : (
+                <div className="invoices-table">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Período</th>
+                        <th>Valor</th>
+                        <th>Status</th>
+                        <th>Data de Criação</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {invoices.map((invoice) => (
+                        <tr key={invoice.id}>
+                          <td>
+                            {formatDate(invoice.cycleStart.toDate())} - {formatDate(invoice.cycleEnd.toDate())}
+                          </td>
+                          <td>{formatCurrency(invoice.totalFee)}</td>
+                          <td>
+                            <span className={`status-badge ${getStatusColor(invoice.status)}`}>
+                              {getStatusText(invoice.status)}
+                            </span>
+                          </td>
+                          <td>{formatDate(invoice.createdAt.toDate())}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
         </section>
       </div>
     </div>

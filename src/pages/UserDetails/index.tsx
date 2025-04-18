@@ -38,6 +38,15 @@ interface DeviceInfo {
   version: number;
 }
 
+interface CouponUsed {
+  code: string;
+  discountType: string;
+  discountValue: number;
+  discountTotal: number;
+  usedAt: Timestamp;
+  orderId: string;
+}
+
 interface Customer {
   id: string;
   name: string;
@@ -50,7 +59,7 @@ interface Customer {
   status: string;
   deviceInfo: DeviceInfo;
   addresses: Address[];
-  usedCoupons: string[];
+  couponsUsed: CouponUsed[];
   fcmToken: string;
   fcmTokens: Record<string, boolean>;
   lastTokenUpdate: Timestamp;
@@ -92,14 +101,29 @@ const UserDetails = () => {
 
       const userData = userDoc.data();
 
-      // Buscar contagens relacionadas
+      // Buscar pedidos e cupons usados
       const ordersCollection = collection(db, `users/${id}/orders`);
-      const reviewsCollection = collection(db, `users/${id}/reviews`);
+      const ordersSnapshot = await getDocs(ordersCollection);
+      
+      // Extrair cupons dos pedidos
+      const couponsUsed: CouponUsed[] = [];
+      ordersSnapshot.docs.forEach(orderDoc => {
+        const orderData = orderDoc.data();
+        if (orderData.couponApplied) {
+          couponsUsed.push({
+            code: orderData.couponApplied.code,
+            discountType: orderData.couponApplied.discountType,
+            discountValue: orderData.couponApplied.discountValue,
+            discountTotal: orderData.discountTotal || 0,
+            usedAt: orderData.createdAt,
+            orderId: orderDoc.id
+          });
+        }
+      });
 
-      const [ordersSnapshot, reviewsSnapshot] = await Promise.all([
-        getDocs(ordersCollection),
-        getDocs(reviewsCollection)
-      ]);
+      // Buscar outras contagens relacionadas
+      const reviewsCollection = collection(db, `users/${id}/reviews`);
+      const reviewsSnapshot = await getDocs(reviewsCollection);
 
       // Mapear endereços diretamente do userData
       const addresses = userData.addresses || [];
@@ -120,7 +144,7 @@ const UserDetails = () => {
           version: 0
         },
         addresses: addresses,
-        usedCoupons: userData.usedCoupons || [],
+        couponsUsed: couponsUsed,
         fcmToken: userData.fcmToken || '',
         fcmTokens: userData.fcmTokens || {},
         lastTokenUpdate: userData.lastTokenUpdate || Timestamp.now(),
@@ -304,13 +328,25 @@ const UserDetails = () => {
           </div>
         </section>
 
-        {customer.usedCoupons.length > 0 && (
+        {customer.couponsUsed.length > 0 && (
           <section className="info-section">
             <h2>Cupons Utilizados</h2>
             <div className="coupons-grid">
-              {customer.usedCoupons.map((coupon, index) => (
+              {customer.couponsUsed.map((coupon, index) => (
                 <div key={index} className="coupon-card">
-                  {coupon}
+                  <div className="coupon-header">
+                    <h3>{coupon.code}</h3>
+                    <span className="discount-badge">
+                      {coupon.discountType === 'percentage' 
+                        ? `${coupon.discountValue}% OFF`
+                        : `R$ ${coupon.discountValue.toFixed(2)} OFF`}
+                    </span>
+                  </div>
+                  <div className="coupon-details">
+                    <p>Desconto Total: R$ {coupon.discountTotal.toFixed(2)}</p>
+                    <p>Usado em: {new Date(coupon.usedAt.toDate()).toLocaleDateString('pt-BR')}</p>
+                    <p>Pedido: #{coupon.orderId}</p>
+                  </div>
                 </div>
               ))}
             </div>

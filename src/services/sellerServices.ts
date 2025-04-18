@@ -97,6 +97,10 @@ export const getAllSellers = async (): Promise<Seller[]> => {
     
     return snapshot.docs.map((doc) => {
       const data = doc.data();
+      
+      // Usando a abordagem manual para garantir que temos um booleano correto
+      const finalIsOpen = data.isOpen ? true : false;
+      
       return {
         id: doc.id,
         name: data.name || '',
@@ -137,7 +141,7 @@ export const getAllSellers = async (): Promise<Seller[]> => {
           prioritySupport: data.premiumFeatures?.prioritySupport || false
         },
         isActive: data.isActive || false,
-        isOpen: data.isOpen || false,
+        isOpen: finalIsOpen,
         status: data.status || 'pending',
         role: data.role || 'partner',
         createdAt: data.createdAt,
@@ -160,6 +164,9 @@ export const getSellerById = async (id: string): Promise<Seller | null> => {
     }
 
     const data = sellerDoc.data();
+    
+    // Usando a mesma abordagem manual
+    const finalIsOpen = data.isOpen ? true : false;
 
     return {
       id: sellerDoc.id,
@@ -201,7 +208,7 @@ export const getSellerById = async (id: string): Promise<Seller | null> => {
         prioritySupport: data.premiumFeatures?.prioritySupport || false
       },
       isActive: data.isActive || false,
-      isOpen: data.isOpen || false,
+      isOpen: finalIsOpen,
       status: data.status || 'pending',
       role: data.role || 'partner',
       createdAt: data.createdAt,
