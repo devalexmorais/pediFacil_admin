@@ -51,7 +51,7 @@ const Sidebar = () => {
           to="/Advertisements"
           className={location.pathname === '/Advertisements' ? 'active' : ''}
         >
-          Advertisements
+          Anúncios
         </Link>
         <Link
           to="/Categories"
