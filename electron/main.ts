@@ -88,14 +88,11 @@ function createWindow() {
     return { action: 'deny' }
   })
 
-  // Captura e exibe TODAS as mensagens de console (para debug da tela branca)
-  win.webContents.on('console-message', (_event, level, message, line, sourceId) => {
-    const levels = ['verbose', 'info', 'warning', 'error']
-    const levelName = levels[level] || 'unknown'
-    
-    console.log(`[Renderer ${levelName.toUpperCase()}]:`, message)
-    if (sourceId) {
-      console.log(`  Source: ${sourceId}:${line}`)
+  // Captura apenas erros críticos do console
+  win.webContents.on('console-message', (_event, level, message) => {
+    // Só exibe erros críticos (level 3 = error)
+    if (level >= 3) {
+      console.error('[Renderer Error]:', message)
     }
   })
 
@@ -104,35 +101,20 @@ function createWindow() {
     console.error('Processo de renderização falhou:', details)
   })
 
-  // Adiciona mais logs de debug
-  win.webContents.on('dom-ready', () => {
-    console.log('DOM pronto!')
+  // Logs essenciais apenas
+  win.webContents.on('did-finish-load', () => {
+    console.log('Aplicação carregada com sucesso')
   })
 
-  win.webContents.on('did-start-loading', () => {
-    console.log('Iniciando carregamento...')
-  })
+  // Abre as ferramentas de desenvolvimento apenas em modo de desenvolvimento
+  if (VITE_DEV_SERVER_URL) {
+    win.webContents.openDevTools()
+  }
 
-  win.webContents.on('did-stop-loading', () => {
-    console.log('Carregamento finalizado')
-  })
-
-  // Abre as ferramentas de desenvolvimento sempre (para debug)
-  win.webContents.openDevTools()
-  
-  // Força abertura do DevTools após carregamento
-  win.webContents.once('dom-ready', () => {
-    win?.webContents.openDevTools()
-  })
-
-  // Log dos caminhos para debug
-  console.log('=== DEBUG PATHS ===')
-  console.log('VITE_DEV_SERVER_URL:', VITE_DEV_SERVER_URL)
-  console.log('RENDERER_DIST:', RENDERER_DIST)
-  console.log('APP_ROOT:', process.env.APP_ROOT)
-  console.log('Icon path:', iconPath)
-  console.log('__dirname:', __dirname)
-  console.log('Process CWD:', process.cwd())
+  // Logs essenciais para debug se necessário
+  if (!VITE_DEV_SERVER_URL) {
+    console.log('Aplicação em modo produção')
+  }
   
   if (VITE_DEV_SERVER_URL) {
     console.log('Carregando do servidor de desenvolvimento:', VITE_DEV_SERVER_URL)
@@ -145,22 +127,15 @@ function createWindow() {
     try {
       const fs = require('fs')
       if (fs.existsSync(indexPath)) {
-        console.log('✅ Arquivo index.html encontrado')
-        console.log('Conteúdo da pasta dist:', fs.readdirSync(RENDERER_DIST))
-        
         // Usa protocolo customizado para carregar arquivos
         const appUrl = 'app://index.html'
-        console.log('Carregando via protocolo customizado:', appUrl)
         win.loadURL(appUrl)
       } else {
-        console.error('❌ Arquivo index.html NÃO encontrado em:', indexPath)
-        console.log('Conteúdo do diretório pai:', fs.readdirSync(path.dirname(indexPath)))
-        // Fallback para método tradicional
+        console.error('❌ Arquivo index.html não encontrado, usando método tradicional')
         win.loadFile(indexPath)
       }
     } catch (error) {
-      console.error('Erro ao verificar arquivos:', error)
-      // Fallback para método tradicional
+      console.error('Erro ao carregar aplicação:', error)
       win.loadFile(indexPath)
     }
   }
@@ -197,7 +172,10 @@ app.whenReady().then(async () => {
       const filePath = request.url.slice('app://'.length)
       const fullPath = path.join(RENDERER_DIST, filePath)
       
-      console.log('Servindo arquivo via protocolo app://', filePath, 'em', fullPath)
+      // Log apenas em caso de desenvolvimento
+      if (VITE_DEV_SERVER_URL) {
+        console.log('Servindo arquivo via protocolo app://', filePath)
+      }
       
       try {
         const data = await readFile(fullPath)

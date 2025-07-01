@@ -1,25 +1,25 @@
-import { app as d, BrowserWindow as g, protocol as v } from "electron";
-import n from "node:path";
-import { fileURLToPath as f } from "node:url";
+import { app as c, BrowserWindow as p, protocol as f } from "electron";
+import o from "node:path";
+import { fileURLToPath as m } from "node:url";
 import { readFile as h } from "node:fs/promises";
-const p = n.dirname(f(import.meta.url));
-process.env.APP_ROOT = n.join(p, "..");
-const a = process.env.VITE_DEV_SERVER_URL, C = n.join(process.env.APP_ROOT, "dist-electron"), c = n.join(process.env.APP_ROOT, "dist");
-process.env.VITE_PUBLIC = a ? n.join(process.env.APP_ROOT, "public") : n.join(process.env.APP_ROOT, "dist");
+const u = o.dirname(m(import.meta.url));
+process.env.APP_ROOT = o.join(u, "..");
+const s = process.env.VITE_DEV_SERVER_URL, R = o.join(process.env.APP_ROOT, "dist-electron"), d = o.join(process.env.APP_ROOT, "dist");
+process.env.VITE_PUBLIC = s ? o.join(process.env.APP_ROOT, "public") : o.join(process.env.APP_ROOT, "dist");
 let e = null;
-function u() {
-  const l = a ? n.join(process.env.APP_ROOT, "public", "logo.png") : n.join(process.env.APP_ROOT, "dist", "logo.png");
-  if (e = new g({
+function g() {
+  const i = s ? o.join(process.env.APP_ROOT, "public", "logo.png") : o.join(process.env.APP_ROOT, "dist", "logo.png");
+  if (e = new p({
     width: 1200,
     height: 800,
-    icon: l,
+    icon: i,
     autoHideMenuBar: !0,
     show: !1,
     // Não mostra a janela até carregar completamente
     webPreferences: {
       nodeIntegration: !1,
       contextIsolation: !0,
-      preload: n.join(p, "preload.cjs"),
+      preload: o.join(u, "preload.cjs"),
       webSecurity: !1,
       // Permite carregamento de recursos locais
       devTools: !0,
@@ -32,14 +32,14 @@ function u() {
     }
   }), e.once("ready-to-show", () => {
     e && e.show();
-  }), e.webContents.on("did-fail-load", (s, o, t) => {
-    console.error("Falha ao carregar a página:", o, t), setTimeout(() => {
+  }), e.webContents.on("did-fail-load", (r, n, t) => {
+    console.error("Falha ao carregar a página:", n, t), setTimeout(() => {
       if (e)
-        if (a)
-          e.loadURL(a);
+        if (s)
+          e.loadURL(s);
         else {
-          const i = n.join(c, "index.html");
-          console.log("Tentando carregar arquivo:", i), e.loadFile(i);
+          const l = o.join(d, "index.html");
+          console.log("Tentando carregar arquivo:", l), e.loadFile(l);
         }
     }, 3e3);
   }), e.webContents.on("did-finish-load", () => {
@@ -48,90 +48,77 @@ function u() {
     console.warn("WebContents não responsivo");
   }), e.webContents.on("responsive", () => {
     console.log("WebContents responsivo novamente");
-  }), e.webContents.setWindowOpenHandler(() => ({ action: "deny" })), e.webContents.on("console-message", (s, o, t, i, r) => {
-    const m = ["verbose", "info", "warning", "error"][o] || "unknown";
-    console.log(`[Renderer ${m.toUpperCase()}]:`, t), r && console.log(`  Source: ${r}:${i}`);
-  }), e.webContents.on("render-process-gone", (s, o) => {
-    console.error("Processo de renderização falhou:", o);
-  }), e.webContents.on("dom-ready", () => {
-    console.log("DOM pronto!");
-  }), e.webContents.on("did-start-loading", () => {
-    console.log("Iniciando carregamento...");
-  }), e.webContents.on("did-stop-loading", () => {
-    console.log("Carregamento finalizado");
-  }), e.webContents.openDevTools(), e.webContents.once("dom-ready", () => {
-    e == null || e.webContents.openDevTools();
-  }), console.log("=== DEBUG PATHS ==="), console.log("VITE_DEV_SERVER_URL:", a), console.log("RENDERER_DIST:", c), console.log("APP_ROOT:", process.env.APP_ROOT), console.log("Icon path:", l), console.log("__dirname:", p), console.log("Process CWD:", process.cwd()), a)
-    console.log("Carregando do servidor de desenvolvimento:", a), e.loadURL(a);
+  }), e.webContents.setWindowOpenHandler(() => ({ action: "deny" })), e.webContents.on("console-message", (r, n, t) => {
+    n >= 3 && console.error("[Renderer Error]:", t);
+  }), e.webContents.on("render-process-gone", (r, n) => {
+    console.error("Processo de renderização falhou:", n);
+  }), e.webContents.on("did-finish-load", () => {
+    console.log("Aplicação carregada com sucesso");
+  }), s && e.webContents.openDevTools(), s || console.log("Aplicação em modo produção"), s)
+    console.log("Carregando do servidor de desenvolvimento:", s), e.loadURL(s);
   else {
-    const s = n.join(c, "index.html");
-    console.log("Carregando arquivo local:", s);
+    const r = o.join(d, "index.html");
+    console.log("Carregando arquivo local:", r);
     try {
-      const o = require("fs");
-      if (o.existsSync(s)) {
-        console.log("✅ Arquivo index.html encontrado"), console.log("Conteúdo da pasta dist:", o.readdirSync(c));
-        const t = "app://index.html";
-        console.log("Carregando via protocolo customizado:", t), e.loadURL(t);
-      } else
-        console.error("❌ Arquivo index.html NÃO encontrado em:", s), console.log("Conteúdo do diretório pai:", o.readdirSync(n.dirname(s))), e.loadFile(s);
-    } catch (o) {
-      console.error("Erro ao verificar arquivos:", o), e.loadFile(s);
+      require("fs").existsSync(r) ? e.loadURL("app://index.html") : (console.error("❌ Arquivo index.html não encontrado, usando método tradicional"), e.loadFile(r));
+    } catch (n) {
+      console.error("Erro ao carregar aplicação:", n), e.loadFile(r);
     }
   }
 }
-d.on("window-all-closed", () => {
-  process.platform !== "darwin" && (d.quit(), e = null);
+c.on("window-all-closed", () => {
+  process.platform !== "darwin" && (c.quit(), e = null);
 });
-d.on("activate", () => {
-  g.getAllWindows().length === 0 && u();
+c.on("activate", () => {
+  p.getAllWindows().length === 0 && g();
 });
-process.on("uncaughtException", (l) => {
-  console.error("Erro não tratado:", l);
+process.on("uncaughtException", (i) => {
+  console.error("Erro não tratado:", i);
 });
-d.whenReady().then(async () => {
-  a || v.handle("app", async (l) => {
-    const s = l.url.slice(6), o = n.join(c, s);
-    console.log("Servindo arquivo via protocolo app://", s, "em", o);
+c.whenReady().then(async () => {
+  s || f.handle("app", async (i) => {
+    const r = i.url.slice(6), n = o.join(d, r);
+    s && console.log("Servindo arquivo via protocolo app://", r);
     try {
-      const t = await h(o), i = n.extname(o);
-      let r = "text/plain";
-      switch (i) {
+      const t = await h(n), l = o.extname(n);
+      let a = "text/plain";
+      switch (l) {
         case ".html":
-          r = "text/html";
+          a = "text/html";
           break;
         case ".js":
-          r = "application/javascript";
+          a = "application/javascript";
           break;
         case ".css":
-          r = "text/css";
+          a = "text/css";
           break;
         case ".png":
-          r = "image/png";
+          a = "image/png";
           break;
         case ".jpg":
         case ".jpeg":
-          r = "image/jpeg";
+          a = "image/jpeg";
           break;
         case ".svg":
-          r = "image/svg+xml";
+          a = "image/svg+xml";
           break;
         case ".ico":
-          r = "image/x-icon";
+          a = "image/x-icon";
           break;
       }
       return new Response(t, {
         headers: {
-          "Content-Type": r,
+          "Content-Type": a,
           "Content-Security-Policy": "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https:;"
         }
       });
     } catch (t) {
-      return console.error("Erro ao servir arquivo:", o, t), new Response("File not found", { status: 404 });
+      return console.error("Erro ao servir arquivo:", n, t), new Response("File not found", { status: 404 });
     }
-  }), u();
+  }), g();
 });
 export {
-  C as MAIN_DIST,
-  c as RENDERER_DIST,
-  a as VITE_DEV_SERVER_URL
+  R as MAIN_DIST,
+  d as RENDERER_DIST,
+  s as VITE_DEV_SERVER_URL
 };
