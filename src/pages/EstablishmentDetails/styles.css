@@ -32,12 +32,7 @@
   margin-top: 10px;
 }
 
-.status-badge {
-  padding: 5px 10px;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 500;
-}
+/* Removido para evitar conflito com a definição específica da tabela */
 
 .active {
   background-color: #e6f4ea;
@@ -188,6 +183,27 @@
 .error-container p {
   color: #d32f2f;
   font-size: 18px;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 20px;
+  font-size: 18px;
+  color: #666;
+}
+
+.error-message {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 20px;
+  font-size: 18px;
+  color: #d32f2f;
+  background: #ffebee;
+  border-radius: 8px;
+  margin: 20px;
 }
 
 .rating {
@@ -406,12 +422,7 @@
   margin: 0;
 }
 
-.status-badge {
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 14px;
-  font-weight: 600;
-}
+/* Removido para evitar conflito - usando definição específica da tabela */
 
 .status-badge.active {
   background-color: #dcfce7;
@@ -942,6 +953,9 @@
   background-color: white;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  table-layout: fixed;
+  position: relative;
+  overflow: hidden;
 }
 
 .invoices-table th,
@@ -949,6 +963,20 @@
   padding: 1rem;
   text-align: left;
   border-bottom: 1px solid #eee;
+  position: relative;
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.invoices-table .status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: inline-block;
+  position: relative;
+  white-space: nowrap;
 }
 
 .invoices-table th {
@@ -982,16 +1010,19 @@
   display: inline-block;
 }
 
+.invoices-table .status-badge.status-paid,
 .status-paid {
   background-color: #d4edda;
   color: #155724;
 }
 
+.invoices-table .status-badge.status-late,
 .status-late {
   background-color: #f8d7da;
   color: #721c24;
 }
 
+.invoices-table .status-badge.status-pending,
 .status-pending {
   background-color: #fff3cd;
   color: #856404;

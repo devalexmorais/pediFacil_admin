@@ -14,7 +14,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Lista de canais permitidos para recebimento
     const validChannels = ['fromMain']
     if (validChannels.includes(channel)) {
-      ipcRenderer.on(channel, (event, ...args) => func(...args))
+      ipcRenderer.on(channel, (_event, ...args) => func(...args))
     }
   },
   // Você pode expor outras APIs necessárias aqui

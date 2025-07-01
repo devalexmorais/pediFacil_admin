@@ -9,7 +9,7 @@ import {
   query,
   where,
   orderBy,
-  limit,
+  limit as firestoreLimit,
   Timestamp,
   DocumentData,
   QueryDocumentSnapshot
@@ -129,7 +129,7 @@ export const getPromotionalProducts = async (limit: number = 10): Promise<Produc
       where('isActive', '==', true),
       where('isPromotion', '==', true),
       orderBy('createdAt', 'desc'),
-      limit(limit)
+      firestoreLimit(limit)
     );
     
     const snapshot = await getDocs(q);

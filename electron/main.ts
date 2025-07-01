@@ -19,20 +19,25 @@ function createWindow() {
     width: 1200,
     height: 800,
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
+    autoHideMenuBar: false, // Mostra a barra de menu (File, Edit, View, etc.)
     webPreferences: {
-      nodeIntegration: true,
+      nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.mjs')
     }
   })
 
   // Adiciona handler de erro para carregamento
-  win.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
-    console.error('Falha ao carregar a página:', errorDescription)
+  win.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
+    console.error('Falha ao carregar a página:', errorCode, errorDescription)
     // Tenta recarregar após 3 segundos em caso de erro
     setTimeout(() => {
       if (win) {
-        win.loadURL(VITE_DEV_SERVER_URL || path.join(RENDERER_DIST, 'index.html'))
+        if (VITE_DEV_SERVER_URL) {
+          win.loadURL(VITE_DEV_SERVER_URL)
+        } else {
+          win.loadFile(path.join(RENDERER_DIST, 'index.html'))
+        }
       }
     }, 3000)
   })
@@ -40,6 +45,11 @@ function createWindow() {
   win.webContents.on('did-finish-load', () => {
     win?.webContents.send('main-process-message', new Date().toLocaleString())
   })
+
+  // Log dos caminhos para debug
+  console.log('VITE_DEV_SERVER_URL:', VITE_DEV_SERVER_URL)
+  console.log('RENDERER_DIST:', RENDERER_DIST)
+  console.log('Tentando carregar:', VITE_DEV_SERVER_URL || path.join(RENDERER_DIST, 'index.html'))
 
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL)

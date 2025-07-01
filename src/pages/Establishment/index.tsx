@@ -168,7 +168,7 @@ const Establishment = () => {
               </thead>
               <tbody>
                 {currentSellers.map(seller => {
-                  const isOpenStatus = seller.isOpen === true;
+                  // const isOpenStatus = seller.isOpen === true;
                   
                   return (
                     <tr key={seller.id}>

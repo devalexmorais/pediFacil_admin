@@ -1,10 +1,10 @@
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { app } from '../firebaseConfig';
+import { app } from '../config/firebase';
 
 export const useCoupons = () => {
   const functions = getFunctions(app);
 
-  const validateCoupon = async (code: string, orderTotal: number, items: CartItem[]) => {
+  const validateCoupon = async (code: string, orderTotal: number, items: any[]) => {
     const validate = httpsCallable(functions, 'validateCoupon');
     try {
       const result = await validate({ 

@@ -192,12 +192,12 @@ const Plans: React.FC = () => {
     }));
   };
 
-  const formatCurrency = (value: string) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(Number(value));
-  };
+  // const formatCurrency = (value: string) => {
+  //   return new Intl.NumberFormat('pt-BR', {
+  //     style: 'currency',
+  //     currency: 'BRL'
+  //   }).format(Number(value));
+  // };
 
   useEffect(() => {
     fetchPlans();

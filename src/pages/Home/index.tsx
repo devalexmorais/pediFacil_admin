@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, Timestamp, collectionGroup, onSnapshot, getDocs } from 'firebase/firestore';
+import { collection, query, where, Timestamp, collectionGroup, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import './styles.css';
 

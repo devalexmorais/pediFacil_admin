@@ -7,7 +7,6 @@ import {
   updateDoc,
   deleteDoc,
   query,
-  where,
   orderBy,
   Timestamp,
   DocumentData,
@@ -197,7 +196,11 @@ export const getMainCategories = async (): Promise<Category[]> => {
     return querySnapshot.docs.map(doc => ({
       id: doc.id,
       name: doc.data().name,
-      // ... outros campos necessários
+      image: doc.data().image || '',
+      isActive: doc.data().isActive || true,
+      parentId: doc.data().parentId || null,
+      createdAt: doc.data().createdAt || Timestamp.now(),
+      updatedAt: doc.data().updatedAt || Timestamp.now()
     }));
   } catch (error) {
     console.error('Erro no getMainCategories:', error);

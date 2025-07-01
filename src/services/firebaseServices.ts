@@ -42,7 +42,7 @@ interface District {
 const statesCollection = collection(db, 'states');
 const citiesCollection = collection(db, 'cities');
 const districtsCollection = collection(db, 'districts');
-const usersCollection = collection(db, 'users');
+// const usersCollection = collection(db, 'users');
 
 // States
 export const getStates = async (): Promise<State[]> => {

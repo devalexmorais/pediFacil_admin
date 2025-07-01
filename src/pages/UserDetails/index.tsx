@@ -220,7 +220,7 @@ const UserDetails = () => {
         className="back-button"
         onClick={() => navigate(-1)}
       >
-        ← Voltar
+        Voltar
       </button>
 
       <div className="details-header">

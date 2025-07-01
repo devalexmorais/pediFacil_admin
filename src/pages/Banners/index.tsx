@@ -16,7 +16,7 @@ const Banners = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [allSubcategories, setAllSubcategories] = useState<Subcategory[]>([]);
-  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  // const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [subcategoriesLoading, setSubcategoriesLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -73,7 +73,7 @@ const Banners = () => {
 
   const loadCategories = async () => {
     try {
-      setCategoriesLoading(true);
+      // setCategoriesLoading(true);
       const data = await getMainCategories();
       console.log('Categorias carregadas:', data);
       setCategories(data);
@@ -81,7 +81,7 @@ const Banners = () => {
       console.error('Erro completo ao carregar categorias:', err);
       setError(`Falha ao carregar categorias: ${err.message}`);
     } finally {
-      setCategoriesLoading(false);
+      // setCategoriesLoading(false);
     }
   };
 
@@ -175,11 +175,11 @@ const Banners = () => {
   };
 
   // Função para carregar todas as subcategorias de uma categoria específica
-  const loadCategorySubcategories = async (categoryId: string) => {
-    if (!allSubcategories.some(sc => sc.parentCategoryId === categoryId)) {
-      await loadSubcategories(categoryId);
-    }
-  };
+  // const loadCategorySubcategories = async (categoryId: string) => {
+  //   if (!allSubcategories.some(sc => sc.parentCategoryId === categoryId)) {
+  //     await loadSubcategories(categoryId);
+  //   }
+  // };
 
   if (loading) {
     return (

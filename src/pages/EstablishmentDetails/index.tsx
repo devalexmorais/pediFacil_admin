@@ -1,9 +1,9 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../config/firebase';
-import { getStoreInvoices, Invoice } from '../../services/invoiceService';
-import { checkBillingControl, initializeBillingControl, } from '../../services/billingService';
+import { Invoice } from '../../services/invoiceService';
+import Layout from '../../components/Layout';
 import './styles.css';
 
 
@@ -76,21 +76,31 @@ const EstablishmentDetails = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [hasBillingControl, setHasBillingControl] = useState(false);
-  const [initializingBilling, setInitializingBilling] = useState(false);
 
   useEffect(() => {
     if (id) {
       loadEstablishmentDetails();
       loadInvoices();
-      checkBillingControlExists();
     }
   }, [id]);
 
   const loadInvoices = async () => {
     if (!id) return;
     try {
-      const storeInvoices = await getStoreInvoices(id);
+      // Busca as invoices como subcoleção dentro do documento do estabelecimento
+      const invoicesCollection = collection(db, 'partners', id, 'invoices');
+      const querySnapshot = await getDocs(invoicesCollection);
+      
+      const storeInvoices: Invoice[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        storeInvoices.push({
+          id: doc.id,
+          ...data
+        } as Invoice);
+      });
+      
+      console.log(`Encontradas ${storeInvoices.length} faturas para o estabelecimento ${id}`);
       setInvoices(storeInvoices);
     } catch (error) {
       console.error('Erro ao carregar faturas:', error);
@@ -133,7 +143,7 @@ const EstablishmentDetails = () => {
           delivery: {
             maxTime: data.settings?.delivery?.maxTime || '45',
             minTime: data.settings?.delivery?.minTime || '30',
-            minimumOrderAmount: data.settings?.delivery?.minimumOrderAmount || 0
+            minimumOrderAmount: Number(data.settings?.delivery?.minimumOrderAmount) || 0
           },
           pickup: {
             enabled: data.settings?.pickup?.enabled || false,
@@ -164,66 +174,7 @@ const EstablishmentDetails = () => {
     }
   };
 
-  const checkBillingControlExists = async () => {
-    if (!id) return;
-    try {
-      console.log('Verificando billing control para estabelecimento:', id);
-      const exists = await checkBillingControl(id);
-      console.log('Billing control existe?', exists);
-      setHasBillingControl(exists);
-    } catch (error) {
-      console.error('Erro ao verificar controle de faturamento:', error);
-    }
-  };
 
-  const handleInitializeBilling = async () => {
-    if (!id) {
-      console.error('ID do estabelecimento não disponível');
-      alert('Erro: ID do estabelecimento não disponível');
-      return;
-    }
-
-    try {
-      console.log('Iniciando inicialização do billing control para:', id);
-      setInitializingBilling(true);
-      setError('');
-
-      await initializeBillingControl(id);
-      console.log('Billing control inicializado com sucesso');
-      
-      // Verificar se foi realmente criado
-      const exists = await checkBillingControl(id);
-      if (!exists) {
-        throw new Error('Billing control não foi criado corretamente');
-      }
-      
-      setHasBillingControl(true);
-      // Recarregar faturas após inicialização
-      await loadInvoices();
-    } catch (err: any) {
-      console.error('Erro detalhado ao inicializar faturamento:', {
-        error: err,
-        message: err.message,
-        code: err.code,
-        stack: err.stack
-      });
-      
-      // Mostrar mensagem de erro apropriada para o usuário
-      let errorMessage = 'Erro ao inicializar faturamento. ';
-      if (err.message?.includes('permission-denied')) {
-        errorMessage += 'Você não tem permissão para realizar esta ação.';
-      } else if (err.message?.includes('not-found')) {
-        errorMessage += 'Estabelecimento não encontrado.';
-      } else {
-        errorMessage += err.message || 'Por favor, tente novamente.';
-      }
-      
-      setError(errorMessage);
-      alert(errorMessage);
-    } finally {
-      setInitializingBilling(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -245,12 +196,35 @@ const EstablishmentDetails = () => {
     );
   }
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('pt-BR');
+  const formatDate = (date: any) => {
+    if (!date) return 'Data não informada';
+    
+    // Se for um Timestamp do Firebase
+    if (date && typeof date.toDate === 'function') {
+      return date.toDate().toLocaleDateString('pt-BR');
+    }
+    
+    // Se for uma string de data
+    if (typeof date === 'string') {
+      return new Date(date).toLocaleDateString('pt-BR');
+    }
+    
+    // Se for um número (timestamp)
+    if (typeof date === 'number') {
+      return new Date(date).toLocaleDateString('pt-BR');
+    }
+    
+    // Se já for uma Date
+    if (date instanceof Date) {
+      return date.toLocaleDateString('pt-BR');
+    }
+    
+    return 'Data inválida';
   };
 
-  const formatCurrency = (value: number) => {
-    return value.toLocaleString('pt-BR', {
+  const formatCurrency = (value: any) => {
+    const numValue = Number(value) || 0;
+    return numValue.toLocaleString('pt-BR', {
       style: 'currency',
       currency: 'BRL'
     });
@@ -258,10 +232,15 @@ const EstablishmentDetails = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'paid':
       case 'pago':
         return 'status-paid';
+      case 'overdue':
       case 'atrasado':
         return 'status-late';
+      case 'pending':
+      case 'pendente':
+        return 'status-pending';
       default:
         return 'status-pending';
     }
@@ -269,22 +248,44 @@ const EstablishmentDetails = () => {
 
   const getStatusText = (status: string) => {
     switch (status) {
+      case 'paid':
       case 'pago':
         return 'Pago';
+      case 'overdue':
       case 'atrasado':
         return 'Atrasado';
+      case 'pending':
+      case 'pendente':
+        return 'Pendente';
       default:
         return 'Pendente';
     }
   };
 
+  if (loading) {
+    return (
+      <Layout>
+        <div className="establishment-details">
+          <button 
+            className="back-button"
+            onClick={() => navigate(-1)}
+          >
+            Voltar
+          </button>
+          <div className="loading">Carregando...</div>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
-    <div className="establishment-details">
+    <Layout>
+      <div className="establishment-details">
       <button 
         className="back-button"
         onClick={() => navigate(-1)}
       >
-        ← Voltar
+          Voltar
       </button>
 
       <div className="details-header">
@@ -373,7 +374,7 @@ const EstablishmentDetails = () => {
             </div>
             <div className="info-item">
               <span className="label">Pedido Mínimo</span>
-              <span className="value">R$ {establishment.settings.delivery.minimumOrderAmount.toFixed(2)}</span>
+              <span className="value">R$ {Number(establishment.settings.delivery.minimumOrderAmount || 0).toFixed(2)}</span>
             </div>
             <div className="info-item">
               <span className="label">Retirada no Local</span>
@@ -454,56 +455,45 @@ const EstablishmentDetails = () => {
 
         <section className="info-section">
           <h2>Faturas</h2>
-          {!hasBillingControl ? (
-            <div className="billing-init-container">
-              <p>O controle de faturamento ainda não foi inicializado para este estabelecimento.</p>
-              <button 
-                className="initialize-billing-button"
-                onClick={handleInitializeBilling}
-                disabled={initializingBilling}
-              >
-                {initializingBilling ? 'Inicializando...' : 'Inicializar Controle de Faturamento'}
-              </button>
-            </div>
+          {invoices.length === 0 ? (
+            <p className="no-invoices">Nenhuma fatura encontrada</p>
           ) : (
-            <>
-              {invoices.length === 0 ? (
-                <p className="no-invoices">Nenhuma fatura encontrada</p>
-              ) : (
-                <div className="invoices-table">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Período</th>
-                        <th>Valor</th>
-                        <th>Status</th>
-                        <th>Data de Criação</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {invoices.map((invoice) => (
-                        <tr key={invoice.id}>
-                          <td>
-                            {formatDate(invoice.cycleStart.toDate())} - {formatDate(invoice.cycleEnd.toDate())}
-                          </td>
-                          <td>{formatCurrency(invoice.totalFee)}</td>
-                          <td>
-                            <span className={`status-badge ${getStatusColor(invoice.status)}`}>
-                              {getStatusText(invoice.status)}
-                            </span>
-                          </td>
-                          <td>{formatDate(invoice.createdAt.toDate())}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </>
+            <div className="invoices-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Período da Fatura</th>
+                    <th>Valor Total</th>
+                    <th>Status</th>
+                    <th>Data de Criação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoices.map((invoice: any) => (
+                    <tr key={invoice.id}>
+                      <td>
+                        {formatDate(invoice.createdAt)} - {formatDate(invoice.endDate)}
+                      </td>
+                      <td>{formatCurrency(invoice.totalAmount || 0)}</td>
+                      <td style={{ position: 'relative' }}>
+                        <span 
+                          className={`status-badge ${getStatusColor(invoice.status || 'pending')}`}
+                          style={{ position: 'relative', display: 'inline-block' }}
+                        >
+                          {getStatusText(invoice.status || 'pending')}
+                        </span>
+                      </td>
+                      <td>{formatDate(invoice.createdAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
       </div>
     </div>
+    </Layout>
   );
 };
 

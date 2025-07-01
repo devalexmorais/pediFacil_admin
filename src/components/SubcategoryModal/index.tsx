@@ -29,7 +29,7 @@ const SubcategoryModal: React.FC<SubcategoryModalProps> = ({
 }) => {
   const [name, setName] = useState('');
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
-  const [editingSubcategory, setEditingSubcategory] = useState<Subcategory | null>(null);
+  // const [editingSubcategory, setEditingSubcategory] = useState<Subcategory | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,7 +39,10 @@ const SubcategoryModal: React.FC<SubcategoryModalProps> = ({
       console.log('Buscando subcategorias para categoria:', mainCategoryId);
       const subcategoriesList = await getSubcategories(mainCategoryId);
       console.log('Subcategorias encontradas:', subcategoriesList);
-      setSubcategories(subcategoriesList);
+      setSubcategories(subcategoriesList.map(sub => ({
+        ...sub,
+        createdAt: sub.createdAt || ''
+      })));
       setError(null);
     } catch (error: any) {
       console.error('Erro ao buscar subcategorias:', error);
@@ -53,7 +56,7 @@ const SubcategoryModal: React.FC<SubcategoryModalProps> = ({
     if (isOpen) {
       fetchSubcategories();
       setName('');
-      setEditingSubcategory(null);
+      // setEditingSubcategory(null);
     }
   }, [isOpen, mainCategoryId]);
 
@@ -68,7 +71,7 @@ const SubcategoryModal: React.FC<SubcategoryModalProps> = ({
     try {
       await onSave({ name: name.trim() });
       setName('');
-      setEditingSubcategory(null);
+      // setEditingSubcategory(null);
       await fetchSubcategories();
     } catch (error: any) {
       console.error('Erro ao salvar subcategoria:', error);
@@ -76,10 +79,10 @@ const SubcategoryModal: React.FC<SubcategoryModalProps> = ({
     }
   };
 
-  const handleCancel = () => {
-    setName('');
-    setEditingSubcategory(null);
-  };
+  // const handleCancel = () => {
+  //   setName('');
+  //   // setEditingSubcategory(null);
+  // };
 
   const handleDeleteSubcategory = async (subcategoryId: string) => {
     if (window.confirm('Tem certeza que deseja excluir esta subcategoria?')) {

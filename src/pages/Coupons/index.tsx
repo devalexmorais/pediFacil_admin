@@ -12,8 +12,7 @@ import {
   query,
   orderBy,
   where,
-  Timestamp,
-  collectionGroup
+  Timestamp
 } from 'firebase/firestore';
 
 interface Coupon {

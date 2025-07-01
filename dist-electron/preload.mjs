@@ -11,7 +11,7 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   receive: (channel, func) => {
     const validChannels = ["fromMain"];
     if (validChannels.includes(channel)) {
-      electron.ipcRenderer.on(channel, (event, ...args) => func(...args));
+      electron.ipcRenderer.on(channel, (_event, ...args) => func(...args));
     }
   },
   // Você pode expor outras APIs necessárias aqui
