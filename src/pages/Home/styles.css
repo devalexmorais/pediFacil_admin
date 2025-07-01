@@ -1,12 +1,14 @@
 .home-container {
-  padding: 24px;
+  padding: 0;
 }
 
 .header-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
 }
 
 .welcome-section h1 {
@@ -27,6 +29,7 @@
   background: #f8f9fa;
   padding: 4px;
   border-radius: 8px;
+  flex-wrap: wrap;
 }
 
 .period-btn {
@@ -38,6 +41,7 @@
   cursor: pointer;
   font-size: 14px;
   transition: all 0.3s;
+  white-space: nowrap;
 }
 
 .period-btn:hover {
@@ -51,25 +55,25 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-/* Grid de Métricas */
+/* Grid de Métricas - Responsivo */
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 32px;
-  margin-bottom: 32px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 24px;
+  margin-bottom: 24px;
 }
 
 .metric-card {
   background: white;
   border-radius: 12px;
-  padding: 32px;
+  padding: 24px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   transition: transform 0.2s;
-  min-height: 200px;
+  min-height: 180px;
 }
 
 .metric-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-2px);
 }
 
 .metric-header {
@@ -267,6 +271,39 @@
   color: #999;
 }
 
+/* Responsividade específica da Home */
+@media (max-width: 1200px) {
+  .metrics-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+  }
+  
+  .metric-card {
+    padding: 20px;
+    min-height: 160px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .metrics-grid {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+  }
+  
+  .metric-card {
+    padding: 18px;
+    min-height: 150px;
+  }
+  
+  .metric-value {
+    font-size: 32px;
+  }
+  
+  .recent-activities {
+    padding: 20px;
+  }
+}
+
 @media (max-width: 768px) {
   .header-content {
     flex-direction: column;
@@ -277,10 +314,96 @@
   .period-selector {
     width: 100%;
     overflow-x: auto;
+    justify-content: center;
   }
 
   .metrics-grid {
     grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .metric-card {
+    padding: 16px;
+    min-height: 140px;
+  }
+  
+  .metric-value {
+    font-size: 28px;
+  }
+  
+  .metric-icon {
+    font-size: 20px;
+    width: 40px;
+    height: 40px;
+  }
+  
+  .recent-activities {
+    padding: 16px;
+  }
+  
+  .activity-card {
+    padding: 12px;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 568px) {
+  .metric-card {
+    padding: 14px;
+    min-height: 120px;
+  }
+  
+  .metric-value {
+    font-size: 24px;
+  }
+  
+  .metric-header h3 {
+    font-size: 13px;
+  }
+  
+  .period-btn {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+  
+  .status-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  
+  .activity-card {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .metric-card {
+    padding: 12px;
+    min-height: 100px;
+  }
+  
+  .metric-value {
+    font-size: 20px;
+  }
+  
+  .metric-icon {
+    font-size: 18px;
+    width: 36px;
+    height: 36px;
+  }
+  
+  .welcome-section h1 {
+    font-size: 20px;
+  }
+  
+  .period-btn {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+  
+  .recent-activities {
+    padding: 12px;
   }
 }
 

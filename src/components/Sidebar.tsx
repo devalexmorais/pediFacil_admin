@@ -10,78 +10,100 @@ const Sidebar = () => {
     logout();
   };
 
+  const menuItems = [
+    { 
+      path: '/', 
+      label: 'Dashboard', 
+      icon: '📊',
+      active: location.pathname === '/'
+    },
+    { 
+      path: '/establishment', 
+      label: 'Estabelecimentos', 
+      icon: '🏪',
+      active: location.pathname.includes('/establishment')
+    },
+    { 
+      path: '/users', 
+      label: 'Usuários', 
+      icon: '👥',
+      active: location.pathname.includes('/users')
+    },
+    { 
+      path: '/Cities', 
+      label: 'Cidades', 
+      icon: '🏙️',
+      active: location.pathname === '/Cities'
+    },
+    { 
+      path: '/Banners', 
+      label: 'Banners', 
+      icon: '🖼️',
+      active: location.pathname === '/Banners'
+    },
+    { 
+      path: '/Advertisements', 
+      label: 'Anúncios', 
+      icon: '📢',
+      active: location.pathname === '/Advertisements'
+    },
+    { 
+      path: '/Categories', 
+      label: 'Categorias', 
+      icon: '📂',
+      active: location.pathname === '/Categories'
+    },
+    { 
+      path: '/Finance', 
+      label: 'Financeiro', 
+      icon: '💰',
+      active: location.pathname === '/Finance'
+    },
+    { 
+      path: '/Plans', 
+      label: 'Planos', 
+      icon: '📋',
+      active: location.pathname === '/Plans'
+    },
+    { 
+      path: '/Coupons', 
+      label: 'Cupons', 
+      icon: '🎫',
+      active: location.pathname === '/Coupons'
+    }
+  ];
+
   return (
     <div className="sidebar">
       <div className="sidebar-header">
-        <h2>Admin</h2>
+        <div className="logo">
+          <span className="logo-icon">⚙️</span>
+          <h2 className="logo-text">Admin</h2>
+        </div>
         <div className="user-info">
-          <span>{user?.displayName || user?.email}</span>
+          <span className="user-avatar">👤</span>
+          <span className="user-name">{user?.displayName || user?.email}</span>
         </div>
       </div>
 
       <nav className="sidebar-nav">
-        <Link to="/" className={location.pathname === '/' ? 'active' : ''}>
-          Dashboard
-        </Link>
-        <Link
-          to="/establishment"
-          className={location.pathname.includes('/establishment') ? 'active' : ''}
-        >
-          Estabelecimentos
-        </Link>
-        <Link
-          to="/users"
-          className={location.pathname.includes('/users') ? 'active' : ''}
-        >
-          Usuários
-        </Link>
-        <Link
-          to="/Cities"
-          className={location.pathname === '/Cities' ? 'active' : ''}
-        >
-          Cidades
-        </Link>
-        <Link
-          to="/Banners"
-          className={location.pathname === '/Banners' ? 'active' : ''}
-        >
-          Banners
-        </Link>
-        <Link
-          to="/Advertisements"
-          className={location.pathname === '/Advertisements' ? 'active' : ''}
-        >
-          Anúncios
-        </Link>
-        <Link
-          to="/Categories"
-          className={location.pathname === '/Categories' ? 'active' : ''}
-        >
-          Categorias
-        </Link>
-        <Link
-          to="/Finance"
-          className={location.pathname === '/Finance' ? 'active' : ''}
-        >
-          Financeiro
-        </Link>
-        <Link
-          to="/Plans"
-          className={location.pathname === '/Plans' ? 'active' : ''}
-        >
-          Planos
-        </Link>
-        <Link
-          to="/Coupons"
-          className={location.pathname === '/Coupons' ? 'active' : ''}
-        >
-          Cupons
-        </Link>
+        {menuItems.map((item) => (
+          <Link
+            key={item.path}
+            to={item.path}
+            className={`nav-item ${item.active ? 'active' : ''}`}
+            title={item.label}
+          >
+            <span className="nav-icon">{item.icon}</span>
+            <span className="nav-text">{item.label}</span>
+          </Link>
+        ))}
       </nav>
 
       <div className="sidebar-footer">
-        <button onClick={handleLogout} className="logout-button">
-          Sair
+        <button onClick={handleLogout} className="logout-button" title="Sair">
+          <span className="logout-icon">🚪</span>
+          <span className="logout-text">Sair</span>
         </button>
       </div>
     </div>

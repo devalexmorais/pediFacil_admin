@@ -1,5 +1,5 @@
 .user-details {
-  padding: 24px;
+  padding: 0;
 }
 
 .back-button {
@@ -183,17 +183,194 @@
   background-color: #1976d2;
 }
 
+/* Responsividade específica da página UserDetails */
+@media (max-width: 1200px) {
+  .info-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+  }
+  
+  .addresses-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  
+  .coupons-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .details-header h1 {
+    font-size: 22px;
+  }
+  
+  .info-section {
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .info-section h2 {
+    font-size: 18px;
+    margin-bottom: 20px;
+  }
+  
+  .profile-image {
+    width: 80px;
+    height: 80px;
+  }
+}
+
 @media (max-width: 768px) {
-  .user-details {
-    padding: 16px;
+  .details-header {
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .details-header h1 {
+    font-size: 20px;
   }
 
   .info-grid {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
 
   .user-info {
     flex-wrap: wrap;
+    gap: 12px;
+  }
+  
+  .info-section {
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  
+  .info-section h2 {
+    font-size: 16px;
+    margin-bottom: 16px;
+  }
+  
+  .user-profile {
+    flex-direction: column;
+    text-align: center;
+    gap: 16px;
+  }
+  
+  .addresses-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .coupons-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 568px) {
+  .back-button {
+    margin-bottom: 16px;
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+  
+  .details-header {
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  
+  .details-header h1 {
+    font-size: 18px;
+    margin-bottom: 12px;
+  }
+  
+  .info-section {
+    padding: 14px;
+    margin-bottom: 14px;
+  }
+  
+  .info-section h2 {
+    font-size: 15px;
+    margin-bottom: 14px;
+  }
+  
+  .info-item .label {
+    font-size: 13px;
+  }
+  
+  .info-item .value {
+    font-size: 14px;
+  }
+  
+  .profile-image {
+    width: 70px;
+    height: 70px;
+  }
+  
+  .address-card,
+  .coupon-card {
+    padding: 12px;
+  }
+  
+  .status-badge {
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+  
+  .block-button {
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .back-button {
+    margin-bottom: 12px;
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+  
+  .details-header {
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+  
+  .details-header h1 {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+  
+  .info-section {
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+  
+  .info-section h2 {
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  
+  .profile-image {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .address-card,
+  .coupon-card {
+    padding: 10px;
+  }
+  
+  .block-button {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  
+  .user-info {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
   }
 }
 

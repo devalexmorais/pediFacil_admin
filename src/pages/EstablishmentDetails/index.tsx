@@ -1,9 +1,8 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Invoice } from '../../services/invoiceService';
-import Layout from '../../components/Layout';
 import './styles.css';
 
 
@@ -120,17 +119,31 @@ const EstablishmentDetails = () => {
       }
 
       const data = docSnap.data();
+      
+      // Debug: log dos dados completos para verificar a estrutura
+      console.log('Dados completos do estabelecimento:', data);
+      console.log('Campos de endereço diretos:', {
+        street: data.street,
+        number: data.number,
+        complement: data.complement,
+        neighborhood: data.neighborhood,
+        city: data.city,
+        state: data.state
+      });
+      console.log('Possível objeto address:', data.address);
+      
       setEstablishment({
         id: docSnap.id,
         name: data.name || '',
         email: data.email || '',
         phone: data.phone || '',
-        street: data.street || '',
-        number: data.number || '',
-        complement: data.complement || '',
-        neighborhood: data.neighborhood || '',
-        city: data.city || '',
-        state: data.state || '',
+        // Usar os campos com "Name" que contêm os nomes legíveis
+        street: data.address?.street || data.street || '',
+        number: data.address?.number || data.number || '',
+        complement: data.address?.complement || data.complement || '',
+        neighborhood: data.address?.neighborhoodName || data.neighborhoodName || data.neighborhood || '',
+        city: data.address?.cityName || data.cityName || data.city || '',
+        state: data.address?.stateName || data.stateName || data.state || '',
         store: {
           name: data.store?.name || '',
           category: data.store?.category || '',
@@ -264,23 +277,20 @@ const EstablishmentDetails = () => {
 
   if (loading) {
     return (
-      <Layout>
-        <div className="establishment-details">
-          <button 
-            className="back-button"
-            onClick={() => navigate(-1)}
-          >
-            Voltar
-          </button>
-          <div className="loading">Carregando...</div>
-        </div>
-      </Layout>
+      <div className="establishment-details">
+        <button 
+          className="back-button"
+          onClick={() => navigate(-1)}
+        >
+          Voltar
+        </button>
+        <div className="loading">Carregando...</div>
+      </div>
     );
   }
 
   return (
-    <Layout>
-      <div className="establishment-details">
+    <div className="establishment-details">
       <button 
         className="back-button"
         onClick={() => navigate(-1)}
@@ -290,13 +300,19 @@ const EstablishmentDetails = () => {
 
       <div className="details-header">
         <h1>{establishment.store.name}</h1>
-        <div className="establishment-info">
-          <span className={`status-badge ${!establishment.isActive ? 'inactive' : 'active'}`}>
-            {establishment.isActive ? 'Ativo' : 'Inativo'}
-          </span>
-          <span className={`status-badge ${!establishment.isOpen ? 'closed' : 'open'}`}>
-            {establishment.isOpen ? 'Aberto' : 'Fechado'}
-          </span>
+        <div className="status-container">
+          <div className="status-item">
+            <span className="status-label">Status da Conta:</span>
+            <span className={`status-badge ${!establishment.isActive ? 'inactive' : 'active'}`}>
+              {establishment.isActive ? 'Ativo' : 'Inativo'}
+            </span>
+          </div>
+          <div className="status-item">
+            <span className="status-label">Funcionamento:</span>
+            <span className={`status-badge ${!establishment.isOpen ? 'closed' : 'open'}`}>
+              {establishment.isOpen ? 'Aberto' : 'Fechado'}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -493,7 +509,6 @@ const EstablishmentDetails = () => {
         </section>
       </div>
     </div>
-    </Layout>
   );
 };
 

@@ -1,4 +1,251 @@
 * {
   padding: 0;
   margin: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f3f4f6;
+  color: #1f2937;
+  overflow-x: hidden;
+  position: relative;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Estilos globais para responsividade */
+html {
+  font-size: 16px;
+}
+
+/* Ajuste de font-size responsivo */
+@media (max-width: 1200px) {
+  html {
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 768px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 568px) {
+  html {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  html {
+    font-size: 12px;
+  }
+}
+
+/* Prevenção de scroll horizontal em dispositivos móveis */
+body {
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Scrollbar customizada para toda a aplicação */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Para Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f1f1f1;
+}
+
+/* Classes utilitárias globais */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.break-words {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* Utilitários responsivos de display */
+.hidden { display: none !important; }
+.block { display: block !important; }
+.flex { display: flex !important; }
+.inline-flex { display: inline-flex !important; }
+.grid { display: grid !important; }
+
+/* Mobile first utilities */
+@media (min-width: 480px) {
+  .sm\:hidden { display: none !important; }
+  .sm\:block { display: block !important; }
+  .sm\:flex { display: flex !important; }
+}
+
+@media (min-width: 768px) {
+  .md\:hidden { display: none !important; }
+  .md\:block { display: block !important; }
+  .md\:flex { display: flex !important; }
+}
+
+@media (min-width: 1024px) {
+  .lg\:hidden { display: none !important; }
+  .lg\:block { display: block !important; }
+  .lg\:flex { display: flex !important; }
+}
+
+@media (min-width: 1200px) {
+  .xl\:hidden { display: none !important; }
+  .xl\:block { display: block !important; }
+  .xl\:flex { display: flex !important; }
+}
+
+/* Utilitários de espaçamento responsivo */
+.p-2 { padding: 0.5rem; }
+.p-4 { padding: 1rem; }
+.p-6 { padding: 1.5rem; }
+.p-8 { padding: 2rem; }
+
+.m-2 { margin: 0.5rem; }
+.m-4 { margin: 1rem; }
+.m-6 { margin: 1.5rem; }
+.m-8 { margin: 2rem; }
+
+.mb-2 { margin-bottom: 0.5rem; }
+.mb-4 { margin-bottom: 1rem; }
+.mb-6 { margin-bottom: 1.5rem; }
+.mb-8 { margin-bottom: 2rem; }
+
+/* Ajustes responsivos de espaçamento */
+@media (max-width: 768px) {
+  .p-8 { padding: 1rem; }
+  .p-6 { padding: 0.75rem; }
+  .p-4 { padding: 0.5rem; }
+  
+  .m-8 { margin: 1rem; }
+  .m-6 { margin: 0.75rem; }
+  .m-4 { margin: 0.5rem; }
+  
+  .mb-8 { margin-bottom: 1rem; }
+  .mb-6 { margin-bottom: 0.75rem; }
+  .mb-4 { margin-bottom: 0.5rem; }
+}
+
+/* Classes para texto responsivo */
+.text-xs { font-size: 0.75rem; }
+.text-sm { font-size: 0.875rem; }
+.text-base { font-size: 1rem; }
+.text-lg { font-size: 1.125rem; }
+.text-xl { font-size: 1.25rem; }
+.text-2xl { font-size: 1.5rem; }
+.text-3xl { font-size: 1.875rem; }
+
+@media (max-width: 768px) {
+  .text-3xl { font-size: 1.5rem; }
+  .text-2xl { font-size: 1.25rem; }
+  .text-xl { font-size: 1.125rem; }
+  .text-lg { font-size: 1rem; }
+}
+
+@media (max-width: 480px) {
+  .text-3xl { font-size: 1.25rem; }
+  .text-2xl { font-size: 1.125rem; }
+  .text-xl { font-size: 1rem; }
+  .text-lg { font-size: 0.875rem; }
+}
+
+/* Prevenção de zoom em inputs em iOS */
+@media screen and (-webkit-min-device-pixel-ratio:0) {
+  select,
+  textarea,
+  input[type="text"],
+  input[type="password"],
+  input[type="datetime"],
+  input[type="datetime-local"],
+  input[type="date"],
+  input[type="month"],
+  input[type="time"],
+  input[type="week"],
+  input[type="number"],
+  input[type="email"],
+  input[type="url"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="color"] {
+    font-size: 16px;
+  }
+}
+
+/* Otimizações para touch devices */
+@media (hover: none) {
+  .hover\:transform:hover {
+    transform: none;
+  }
+  
+  .hover\:scale:hover {
+    transform: none;
+  }
+}
+
+/* Ajustes para alto contraste */
+@media (prefers-contrast: high) {
+  * {
+    border-color: #000 !important;
+  }
+}
+
+/* Ajustes para modo escuro (preparação futura) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-color: #1a1a1a;
+    --text-color: #ffffff;
+    --border-color: #333333;
+  }
+}
+
+/* Melhoria de performance para animações */
+* {
+  backface-visibility: hidden;
+  perspective: 1000;
+  transform: translate3d(0, 0, 0);
 }

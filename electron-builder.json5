@@ -1,20 +1,28 @@
 // @see - https://www.electron.build/configuration/configuration
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "YourAppID",
+  "appId": "com.pedifacil.admin",
   "asar": true,
-  "productName": "YourAppName",
+  "productName": "Admin pedifacil",
   "directories": {
     "output": "release/${version}"
   },
   "files": [
     "dist",
-    "dist-electron"
+    "dist-electron",
+    "public/logo.png"
+  ],
+  "extraResources": [
+    {
+      "from": "public/logo.png",
+      "to": "logo.png"
+    }
   ],
   "mac": {
     "target": [
       "dmg"
     ],
+    "icon": "public/logo.png",
     "artifactName": "${productName}-Mac-${version}-Installer.${ext}"
   },
   "win": {
@@ -26,6 +34,7 @@
         ]
       }
     ],
+    "icon": "public/logo.png",
     "artifactName": "${productName}-Windows-${version}-Setup.${ext}"
   },
   "nsis": {
@@ -38,6 +47,7 @@
     "target": [
       "AppImage"
     ],
+    "icon": "public/logo.png",
     "artifactName": "${productName}-Linux-${version}.${ext}"
   }
 }

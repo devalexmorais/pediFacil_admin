@@ -7,7 +7,6 @@ interface Subcategory {
   name: string;
   isActive: boolean;
   parentCategoryId: string;
-  createdAt: string;
 }
 
 interface SubcategoryModalProps {
@@ -40,8 +39,7 @@ const SubcategoryModal: React.FC<SubcategoryModalProps> = ({
       const subcategoriesList = await getSubcategories(mainCategoryId);
       console.log('Subcategorias encontradas:', subcategoriesList);
       setSubcategories(subcategoriesList.map(sub => ({
-        ...sub,
-        createdAt: sub.createdAt || ''
+        ...sub
       })));
       setError(null);
     } catch (error: any) {

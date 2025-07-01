@@ -4,7 +4,8 @@ import electron from 'vite-plugin-electron/simple'
 import react from '@vitejs/plugin-react'
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  base: command === 'serve' ? '/' : './', // Use path absoluto em dev, relativo em build
   plugins: [
     react(),
     electron({
@@ -16,6 +17,16 @@ export default defineConfig({
         // Shortcut of `build.rollupOptions.input`.
         // Preload scripts may contain Web assets, so use the `build.rollupOptions.input` instead `build.lib.entry`.
         input: path.join(__dirname, 'electron/preload.ts'),
+        vite: {
+          build: {
+            rollupOptions: {
+              output: {
+                format: 'cjs',
+                entryFileNames: '[name].cjs',
+              }
+            }
+          }
+        }
       },
       // Ployfill the Electron and Node.js API for Renderer process.
       // If you want use Node.js in Renderer process, the `nodeIntegration` needs to be enabled in the Main process.
@@ -26,4 +37,24 @@ export default defineConfig({
         : {},
     }),
   ],
-})
+  build: {
+    assetsDir: 'assets',
+    outDir: 'dist',
+    emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        assetFileNames: (assetInfo) => {
+          if (assetInfo.name && assetInfo.name.endsWith('.png')) {
+            return '[name][extname]'
+          }
+          return 'assets/[name]-[hash][extname]'
+        },
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js'
+      }
+    },
+    target: 'esnext',
+    minify: 'esbuild'
+  },
+  publicDir: 'public'
+}))

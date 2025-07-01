@@ -4,11 +4,7 @@ import {
   doc, 
   getDoc,
   updateDoc,
-  Timestamp,
-  DocumentData,
-  QueryDocumentSnapshot,
-  query,
-  where
+  Timestamp
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { auth } from '../config/firebase';
@@ -76,20 +72,6 @@ export interface Seller {
   lastUpdated: string;
 }
 
-const getLocationName = async (collectionName: string, id: string): Promise<string> => {
-  try {
-    const docRef = doc(db, collectionName, id);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      return docSnap.data().name || '';
-    }
-    return '';
-  } catch (error) {
-    console.error(`Erro ao buscar ${collectionName}:`, error);
-    return '';
-  }
-};
-
 export const getAllSellers = async (): Promise<Seller[]> => {
   try {
     const partnersRef = collection(db, 'partners');
@@ -106,12 +88,13 @@ export const getAllSellers = async (): Promise<Seller[]> => {
         name: data.name || '',
         email: data.email || '',
         phone: data.phone || '',
-        street: data.street || '',
-        number: data.number || '',
-        complement: data.complement || '',
-        neighborhood: data.neighborhood || '',
-        city: data.city || '',
-        state: data.state || '',
+        // Verificar se os dados estão em address.* ou diretamente nos campos
+        street: data.address?.street || data.street || '',
+        number: data.address?.number || data.number || '',
+        complement: data.address?.complement || data.complement || '',
+        neighborhood: data.address?.neighborhoodName || data.neighborhoodName || data.neighborhood || '',
+        city: data.address?.cityName || data.cityName || data.city || '',
+        state: data.address?.stateName || data.stateName || data.state || '',
         store: {
           name: data.store?.name || '',
           category: data.store?.category || '',
@@ -173,12 +156,13 @@ export const getSellerById = async (id: string): Promise<Seller | null> => {
       name: data.name || '',
       email: data.email || '',
       phone: data.phone || '',
-      street: data.street || '',
-      number: data.number || '',
-      complement: data.complement || '',
-      neighborhood: data.neighborhood || '',
-      city: data.city || '',
-      state: data.state || '',
+      // Verificar se os dados estão em address.* ou diretamente nos campos
+      street: data.address?.street || data.street || '',
+      number: data.address?.number || data.number || '',
+      complement: data.address?.complement || data.complement || '',
+      neighborhood: data.address?.neighborhoodName || data.neighborhoodName || data.neighborhood || '',
+      city: data.address?.cityName || data.cityName || data.city || '',
+      state: data.address?.stateName || data.stateName || data.state || '',
       store: {
         name: data.store?.name || '',
         category: data.store?.category || '',

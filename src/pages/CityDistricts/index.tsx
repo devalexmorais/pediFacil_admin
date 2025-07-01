@@ -3,12 +3,19 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getDistrictsByCity, createDistrict, deleteDistrict } from '../../services/firebaseServices';
 import './styles.css';
 
-interface District {
-  id: string;
-  name: string;
+// Usando interface District do firebaseServices
+type District = {
+  id?: string;
   cityId: string;
+  name: string;
   isActive: boolean;
-}
+  city?: {
+    id: string;
+    name: string;
+    stateId: string;
+    isActive: boolean;
+  };
+};
 
 const CityDistricts = () => {
   const { cityId } = useParams();
@@ -163,12 +170,12 @@ const CityDistricts = () => {
                 </tr>
               ) : (
                 districts.map((district) => (
-                  <tr key={district.id}>
+                  <tr key={district.id || 'no-id'}>
                     <td>{district.name}</td>
                     <td>
                       <div className="action-buttons">
                         <button 
-                          onClick={() => handleDeleteDistrict(district.id)}
+                          onClick={() => handleDeleteDistrict(district.id || '')}
                           className="action-btn delete"
                         >
                           Excluir
