@@ -8,6 +8,7 @@ import EstablishmentDetails from '../pages/EstablishmentDetails';
 import Users from '../pages/Users';
 import Cities from '../pages/Cities';
 import Banners from '../pages/Banners';
+import Advertisements from '../pages/Advertisements';
 import Categories from '../pages/Categories';
 import Finance from '../pages/Finance';
 import Plans from '../pages/Plans';
@@ -70,6 +71,11 @@ const AppRoutes = () => {
       <Route path="/Banners" element={
         <PrivateRoute>
           <Banners />
+        </PrivateRoute>
+      } />
+      <Route path="/Advertisements" element={
+        <PrivateRoute>
+          <Advertisements />
         </PrivateRoute>
       } />
       <Route path="/Categories" element={

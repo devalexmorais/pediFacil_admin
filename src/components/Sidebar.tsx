@@ -15,7 +15,7 @@ const Sidebar = () => {
       <div className="sidebar-header">
         <h2>Admin</h2>
         <div className="user-info">
-          <span>{user?.name}</span>
+          <span>{user?.displayName || user?.email}</span>
         </div>
       </div>
 
@@ -46,6 +46,12 @@ const Sidebar = () => {
           className={location.pathname === '/Banners' ? 'active' : ''}
         >
           Banners
+        </Link>
+        <Link
+          to="/Advertisements"
+          className={location.pathname === '/Advertisements' ? 'active' : ''}
+        >
+          Advertisements
         </Link>
         <Link
           to="/Categories"
