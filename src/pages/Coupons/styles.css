@@ -99,18 +99,24 @@
   margin-bottom: 16px;
   padding-bottom: 16px;
   border-bottom: 1px solid #e2e8f0;
+  gap: 16px;
 }
 
 .coupon-code {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex: 1;
+  margin-right: 12px;
+  min-width: 0;
 }
 
 .coupon-code h3 {
   font-size: 20px;
   color: #2d3748;
   margin: 0;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .status-badge {
@@ -119,6 +125,8 @@
   border-radius: 4px;
   font-size: 12px;
   font-weight: 500;
+  align-self: flex-start;
+  white-space: nowrap;
 }
 
 .status-badge.active {
@@ -134,6 +142,8 @@
 .coupon-actions {
   display: flex;
   gap: 8px;
+  flex-shrink: 0;
+  align-items: flex-start;
 }
 
 .action-button {

@@ -253,11 +253,18 @@ const Cities = () => {
   };
 
   if (isLoading) {
-    return <div>Carregando...</div>;
+    return (
+      <div className="cities-container">
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Carregando localidades...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="categories-container">
+    <div className="cities-container">
       {error && (
         <ErrorNotification
           title={error.title}
@@ -268,24 +275,30 @@ const Cities = () => {
       
       <header className="page-header">
         <div className="header-content">
-          <h1>Gerenciamento de Localidades</h1>
-          <button className="add-button" onClick={() => setIsStateModalOpen(true)}>
-            + Novo Estado
+          <h1>🏙️ Gerenciamento de Localidades</h1>
+          <button 
+            className="add-button" 
+            onClick={() => setIsStateModalOpen(true)}
+            aria-label="Adicionar novo estado"
+          >
+            ✨ Novo Estado
           </button>
         </div>
         
         <div className="search-filters">
           <input 
             type="text" 
-            placeholder="Buscar localidade..." 
+            placeholder="🔍 Buscar localidade..." 
             className="search-input"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
+            aria-label="Campo de busca"
           />
           <select 
             className="filter-select"
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
+            aria-label="Filtrar por status"
           >
             <option value="">Todos os status</option>
             <option value="Ativo">Ativo</option>
@@ -294,64 +307,104 @@ const Cities = () => {
         </div>
       </header>
 
-      <div className="categories-grid">
-        {states.map((state) => (
-          <div key={state.id} className="category-card">
-            <div className="category-content">
-              <div className="category-header">
-                <h3>{state.name} - {state.uf}</h3>
-              </div>
-              <div className="category-info">
-                <span className="subcategories-count">
-                  {citiesCount[state.id] || 0} cidades
-                </span>
-              </div>
-              <div className="action-row">
-                <button 
-                  className="action-btn edit"
-                  onClick={() => {
-                    setSelectedState(state);
-                    setIsLocationModalOpen(true);
-                  }}
-                >
-                  <i className="icon">📍</i>
-                  Ver Cidades
-                </button>
-                <button 
-                  className="action-btn delete"
-                  onClick={() => handleDeleteState(state.id)}
-                >
-                  <i className="icon">🗑️</i>
-                  Excluir
-                </button>
+      {states.length === 0 ? (
+        <div className="error-container">
+          <h3>🏙️ Nenhum estado encontrado</h3>
+          <p>Comece adicionando um novo estado para gerenciar suas localidades.</p>
+          <button 
+            className="add-button" 
+            onClick={() => setIsStateModalOpen(true)}
+          >
+            ✨ Adicionar Primeiro Estado
+          </button>
+        </div>
+      ) : (
+        <div className="categories-grid">
+          {states.map((state) => (
+            <div key={state.id} className="category-card">
+              <div className="category-content">
+                <div className="category-header">
+                  <h3>🏛️ {state.name}</h3>
+                  <span className="state-uf">{state.uf}</span>
+                </div>
+                <div className="category-info">
+                  <div className="subcategories-count">
+                    🏘️ {citiesCount[state.id] || 0} cidades
+                  </div>
+                  <div className="state-status">
+                    ✅ Ativo
+                  </div>
+                </div>
+                <div className="action-row">
+                  <button 
+                    className="action-btn edit"
+                    onClick={() => {
+                      setSelectedState(state);
+                      setIsLocationModalOpen(true);
+                    }}
+                    aria-label={`Ver cidades de ${state.name}`}
+                  >
+                    <span className="icon">🗺️</span>
+                    Ver Cidades
+                  </button>
+                  <button 
+                    className="action-btn delete"
+                    onClick={() => handleDeleteState(state.id)}
+                    aria-label={`Excluir estado ${state.name}`}
+                  >
+                    <span className="icon">🗑️</span>
+                    Excluir
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Modais */}
       {isStateModalOpen && (
         <div className="modal">
           <div className="modal-content">
-            <h2>Novo Estado</h2>
+            <h2>🏛️ Novo Estado</h2>
             <form onSubmit={handleCreateState}>
-              <input
-                type="text"
-                placeholder="Nome do Estado"
-                value={newState.name}
-                onChange={e => setNewState({ ...newState, name: e.target.value })}
-              />
-              <input
-                type="text"
-                placeholder="UF"
-                maxLength={2}
-                value={newState.uf}
-                onChange={e => setNewState({ ...newState, uf: e.target.value.toUpperCase() })}
-              />
+              <div className="form-group">
+                <label htmlFor="stateName">Nome do Estado</label>
+                <input
+                  id="stateName"
+                  type="text"
+                  placeholder="Ex: São Paulo"
+                  value={newState.name}
+                  onChange={e => setNewState({ ...newState, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="stateUf">UF (Sigla)</label>
+                <input
+                  id="stateUf"
+                  type="text"
+                  placeholder="Ex: SP"
+                  maxLength={2}
+                  value={newState.uf}
+                  onChange={e => setNewState({ ...newState, uf: e.target.value.toUpperCase() })}
+                  required
+                />
+              </div>
               <div className="modal-actions">
-                <button type="button" onClick={() => setIsStateModalOpen(false)}>Cancelar</button>
-                <button type="submit">Salvar</button>
+                <button 
+                  type="button" 
+                  className="cancel-button"
+                  onClick={() => setIsStateModalOpen(false)}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit"
+                  className="submit-button"
+                >
+                  ✨ Salvar Estado
+                </button>
               </div>
             </form>
           </div>
@@ -362,17 +415,33 @@ const Cities = () => {
       {isCityModalOpen && (
         <div className="modal">
           <div className="modal-content">
-            <h2>Nova Cidade</h2>
+            <h2>🏘️ Nova Cidade</h2>
             <form onSubmit={() => setIsCityModalOpen(true)}>
-              <input
-                type="text"
-                placeholder="Nome da Cidade"
-                value={newCity.name}
-                onChange={e => setNewCity({ ...newCity, name: e.target.value })}
-              />
+              <div className="form-group">
+                <label htmlFor="cityName">Nome da Cidade</label>
+                <input
+                  id="cityName"
+                  type="text"
+                  placeholder="Ex: Campinas"
+                  value={newCity.name}
+                  onChange={e => setNewCity({ ...newCity, name: e.target.value })}
+                  required
+                />
+              </div>
               <div className="modal-actions">
-                <button type="button" onClick={() => setIsCityModalOpen(false)}>Cancelar</button>
-                <button type="submit">Salvar</button>
+                <button 
+                  type="button" 
+                  className="cancel-button"
+                  onClick={() => setIsCityModalOpen(false)}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit"
+                  className="submit-button"
+                >
+                  🏘️ Salvar Cidade
+                </button>
               </div>
             </form>
           </div>
@@ -383,17 +452,33 @@ const Cities = () => {
       {isNeighborhoodModalOpen && (
         <div className="modal">
           <div className="modal-content">
-            <h2>Novo Bairro</h2>
+            <h2>🏠 Novo Bairro</h2>
             <form onSubmit={() => setIsNeighborhoodModalOpen(true)}>
-              <input
-                type="text"
-                placeholder="Nome do Bairro"
-                value={newNeighborhood.name}
-                onChange={e => setNewNeighborhood({ ...newNeighborhood, name: e.target.value })}
-              />
+              <div className="form-group">
+                <label htmlFor="neighborhoodName">Nome do Bairro</label>
+                <input
+                  id="neighborhoodName"
+                  type="text"
+                  placeholder="Ex: Centro"
+                  value={newNeighborhood.name}
+                  onChange={e => setNewNeighborhood({ ...newNeighborhood, name: e.target.value })}
+                  required
+                />
+              </div>
               <div className="modal-actions">
-                <button type="button" onClick={() => setIsNeighborhoodModalOpen(false)}>Cancelar</button>
-                <button type="submit">Salvar</button>
+                <button 
+                  type="button" 
+                  className="cancel-button"
+                  onClick={() => setIsNeighborhoodModalOpen(false)}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit"
+                  className="submit-button"
+                >
+                  🏠 Salvar Bairro
+                </button>
               </div>
             </form>
           </div>

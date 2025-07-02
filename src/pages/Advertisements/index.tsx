@@ -162,12 +162,12 @@ const Advertisements = () => {
       )}
       
       <header className="page-header">
-        <h1>Advertisements</h1>
+        <h1>Anúncios</h1>
         <button 
           className="add-button"
           onClick={() => setIsModalOpen(true)}
         >
-          Adicionar Advertisement
+          Adicionar Anúncio
         </button>
       </header>
 
@@ -223,12 +223,6 @@ const Advertisements = () => {
       {advertisements.length === 0 && (
         <div className="empty-state">
           <p>Nenhum advertisement encontrado</p>
-          <button 
-            className="add-button"
-            onClick={() => setIsModalOpen(true)}
-          >
-            Criar primeiro advertisement
-          </button>
         </div>
       )}
 

@@ -26,6 +26,23 @@ export interface Advertisement {
 
 const advertisementsCollection = collection(db, 'advertisements');
 
+// Função helper para extrair o path da imagem a partir da URL do Firebase Storage
+const extractImagePathFromUrl = (imageUrl: string): string | null => {
+  try {
+    // URL format: https://firebasestorage.googleapis.com/v0/b/PROJECT_ID/o/ENCODED_PATH?alt=media&token=TOKEN
+    const url = new URL(imageUrl);
+    const pathParam = url.pathname.split('/o/')[1];
+    if (!pathParam) return null;
+    
+    // Decodifica o path
+    const decodedPath = decodeURIComponent(pathParam);
+    return decodedPath;
+  } catch (error) {
+    console.error('Erro ao extrair path da imagem:', error);
+    return null;
+  }
+};
+
 export const createAdvertisement = async (advertisementData: {
   image: File;
   isActive?: boolean;
@@ -122,14 +139,12 @@ export const updateAdvertisement = async (
         // Tenta excluir a imagem antiga
         if (oldImageUrl) {
           try {
-            const urlParts = oldImageUrl.split('/');
-            const fileNameWithParams = urlParts[urlParts.length - 1];
-            const fileName = fileNameWithParams.split('?')[0];
-            const oldStoragePath = `advertisements/${fileName}`;
-            
-            const oldImageRef = ref(storage, oldStoragePath);
+            const oldImagePath = extractImagePathFromUrl(oldImageUrl);
+            if (oldImagePath) {
+              const oldImageRef = ref(storage, oldImagePath);
             await deleteObject(oldImageRef);
-            console.log('Imagem antiga excluída com sucesso');
+              console.log('Imagem antiga excluída com sucesso:', oldImagePath);
+            }
           } catch (error) {
             console.error('Erro ao excluir imagem antiga:', error);
           }
@@ -166,19 +181,15 @@ export const deleteAdvertisement = async (advertisementId: string): Promise<void
     // Se houver uma imagem, tenta excluí-la do Storage
     if (imageUrl) {
       try {
-        // Extrai o nome do arquivo da URL
-        const urlParts = imageUrl.split('/');
-        const fileNameWithParams = urlParts[urlParts.length - 1];
-        const fileName = fileNameWithParams.split('?')[0];
-        
-        // Monta o caminho completo para o arquivo no storage
-        const storagePath = `advertisements/${fileName}`;
-        console.log('Tentando excluir arquivo:', storagePath);
+        const imagePath = extractImagePathFromUrl(imageUrl);
+        if (imagePath) {
+          console.log('Tentando excluir arquivo:', imagePath);
 
         // Cria a referência e exclui a imagem
-        const imageRef = ref(storage, storagePath);
+          const imageRef = ref(storage, imagePath);
         await deleteObject(imageRef);
-        console.log('Imagem excluída com sucesso:', storagePath);
+          console.log('Imagem excluída com sucesso:', imagePath);
+        }
       } catch (error: any) {
         console.error('Erro ao excluir imagem do advertisement:', error);
       }

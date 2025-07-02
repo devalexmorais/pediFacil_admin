@@ -52,7 +52,7 @@
 
 .advertisement-image {
   width: 100%;
-  height: 200px;
+  aspect-ratio: 2/3;
   object-fit: cover;
 }
 
