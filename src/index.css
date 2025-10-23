@@ -13,8 +13,9 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: #f3f4f6;
   color: #1f2937;
-  overflow-x: hidden;
+  overflow: hidden;
   position: relative;
+  height: 100vh;
 }
 
 code {
@@ -53,10 +54,6 @@ html {
 }
 
 /* Prevenção de scroll horizontal em dispositivos móveis */
-body {
-  overflow-x: hidden;
-  position: relative;
-}
 
 /* Scrollbar customizada para toda a aplicação */
 ::-webkit-scrollbar {

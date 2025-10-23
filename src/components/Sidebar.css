@@ -12,6 +12,7 @@
   z-index: 100;
   transition: all 0.3s ease;
   overflow-x: hidden;
+  overflow-y: auto;
 }
 
 /* Header da sidebar */
@@ -146,15 +147,18 @@
 .content {
   margin-left: 250px;
   padding: 20px;
-  min-height: 100vh;
+  height: 100vh;
   background-color: #f3f4f6;
   transition: margin-left 0.3s ease;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .content-wrapper {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
+  min-height: calc(100vh - 40px);
 }
 
 /* RESPONSIVIDADE AUTOMÁTICA */
@@ -195,6 +199,9 @@
 
   .content {
     margin-left: 80px;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 }
 
@@ -228,6 +235,9 @@
 
   .content {
     margin-left: 70px;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 }
 
@@ -275,6 +285,9 @@
   .content {
     margin-left: 60px;
     padding: 15px;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 }
 
@@ -319,6 +332,9 @@
   .content {
     margin-left: 50px;
     padding: 10px;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 
   .content-wrapper {
@@ -348,6 +364,9 @@
   .content {
     margin-left: 45px;
     padding: 8px;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 }
 

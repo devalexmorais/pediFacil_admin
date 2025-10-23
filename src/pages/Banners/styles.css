@@ -114,10 +114,13 @@
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   z-index: 1000;
+  padding: 20px;
+  box-sizing: border-box;
+  min-height: 100vh;
+  min-height: 100dvh; /* Dynamic viewport height para mobile */
 }
 
 .modal-content {
@@ -126,7 +129,14 @@
   border-radius: 12px;
   width: 100%;
   max-width: 500px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  min-width: 300px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  position: relative;
+  transform: translateY(0);
+  animation: modalSlideIn 0.3s ease-out;
+  margin: auto;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .modal-content h2 {
@@ -245,16 +255,113 @@
   background: none;
   border: none;
   color: #dc2626;
-  font-size: 20px;
   cursor: pointer;
+  font-size: 18px;
   padding: 0;
-  line-height: 1;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .close-error:hover {
-  opacity: 0.8;
+  opacity: 0.7;
 }
 
+/* Modal Animation */
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Modal Responsiveness */
+@media (max-width: 768px) {
+  .modal-overlay {
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .modal-content {
+    max-width: 100%;
+    min-width: 280px;
+    padding: 20px;
+    margin: 0;
+    max-height: 85vh;
+  }
+  
+  .modal-content h2 {
+    font-size: 18px;
+    margin-bottom: 20px;
+  }
+  
+  .form-group {
+    margin-bottom: 16px;
+  }
+  
+  .form-group input,
+  .form-group select {
+    padding: 10px 12px;
+    font-size: 16px; /* Previne zoom no iOS */
+  }
+  
+  .modal-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .cancel-button,
+  .submit-button {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-overlay {
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .modal-content {
+    padding: 16px;
+    min-width: 260px;
+    max-height: 80vh;
+  }
+  
+  .modal-content h2 {
+    font-size: 16px;
+    margin-bottom: 16px;
+  }
+  
+  .form-group {
+    margin-bottom: 14px;
+  }
+  
+  .form-group label {
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+  
+  .form-group input,
+  .form-group select {
+    padding: 8px 10px;
+    font-size: 14px;
+  }
+}
+
+/* Additional responsive styles for banners grid */
 @media (max-width: 768px) {
   .banners-container {
     padding: 16px;
@@ -273,10 +380,6 @@
   .banners-grid {
     grid-template-columns: 1fr;
   }
-
-  .modal-content {
-    margin: 16px;
-  }
 }
 
 .loading-text {
@@ -293,4 +396,79 @@
   font-size: 13px;
   color: #e74c3c;
   font-style: italic;
+}
+
+/* Image Info Styles */
+.image-info {
+  margin-top: 12px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+.image-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.image-details span {
+  font-size: 13px;
+  color: #495057;
+}
+
+.compression-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #856404;
+}
+
+.compression-icon {
+  font-size: 16px;
+}
+
+.no-compression-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #d1edff;
+  border: 1px solid #b3d9ff;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #0c5460;
+}
+
+.no-compression-icon {
+  font-size: 16px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.save-button {
+  padding: 8px 16px;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.save-button:hover {
+  background: #43A047;
 } 

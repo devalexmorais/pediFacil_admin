@@ -250,6 +250,17 @@
   color: #DC3545;
 }
 
+.summary-item.expense-detail {
+  color: #c0392b;
+  font-size: 13px;
+  font-weight: 400;
+  margin-left: 8px;
+}
+
+.summary-item.expense-detail span:last-child {
+  color: #c0392b;
+}
+
 /* Estilos para indicadores de carregamento */
 .loading {
   font-size: 14px;
@@ -625,6 +636,31 @@
 
 .metric-card.subscriptions {
   border-left: 4px solid #E91E63;
+}
+
+.metric-card.profit {
+  border-left: 4px solid #4CAF50;
+  background: linear-gradient(135deg, #f8fff8 0%, #ffffff 100%);
+}
+
+.metric-card.margin {
+  border-left: 4px solid #FF9800;
+  background: linear-gradient(135deg, #fff8f0 0%, #ffffff 100%);
+}
+
+.metric-card.partners {
+  border-left: 4px solid #9C27B0;
+  background: linear-gradient(135deg, #f8f0ff 0%, #ffffff 100%);
+}
+
+.metric-card.growth {
+  border-left: 4px solid #00BCD4;
+  background: linear-gradient(135deg, #f0fdff 0%, #ffffff 100%);
+}
+
+.metric-card.growth .metric-value {
+  color: #00BCD4;
+  font-weight: 800;
 }
 
 .chart-card {

@@ -14,6 +14,7 @@ import {
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '../config/firebase';
 import { serverTimestamp } from 'firebase/firestore';
+import { compressImage, shouldCompressImage, getImageInfo } from '../utils/imageCompression';
 
 export interface Banner {
   id: string;
@@ -27,6 +28,23 @@ export interface Banner {
 
 const bannersCollection = collection(db, 'banners');
 
+// Função helper para extrair o path da imagem a partir da URL do Firebase Storage
+const extractImagePathFromUrl = (imageUrl: string): string | null => {
+  try {
+    // URL format: https://firebasestorage.googleapis.com/v0/b/PROJECT_ID/o/ENCODED_PATH?alt=media&token=TOKEN
+    const url = new URL(imageUrl);
+    const pathParam = url.pathname.split('/o/')[1];
+    if (!pathParam) return null;
+    
+    // Decodifica o path
+    const decodedPath = decodeURIComponent(pathParam);
+    return decodedPath;
+  } catch (error) {
+    console.error('Erro ao extrair path da URL:', error);
+    return null;
+  }
+};
+
 export const createBanner = async (bannerData: {
   title: string;
   mainCategoryId: string;
@@ -35,12 +53,34 @@ export const createBanner = async (bannerData: {
   try {
     console.log('Iniciando upload...');
     
+    // Obter informações da imagem original
+    const originalInfo = await getImageInfo(bannerData.image);
+    console.log('Informações da imagem original:', originalInfo);
+    
+    // Verificar se precisa comprimir
+    let imageToUpload = bannerData.image;
+    if (shouldCompressImage(bannerData.image)) {
+      console.log('Comprimindo imagem...');
+      imageToUpload = await compressImage(bannerData.image, {
+        maxWidth: 1200,
+        maxHeight: 800,
+        quality: 0.8,
+        maxSizeKB: 500
+      });
+      
+      const compressedInfo = await getImageInfo(imageToUpload);
+      console.log('Informações da imagem comprimida:', compressedInfo);
+      console.log(`Redução de tamanho: ${((originalInfo.sizeKB - compressedInfo.sizeKB) / originalInfo.sizeKB * 100).toFixed(1)}%`);
+    } else {
+      console.log('Imagem não precisa ser comprimida');
+    }
+    
     // 1. Gera caminho único para a imagem
-    const storagePath = `banners/${Date.now()}_${bannerData.image.name}`;
+    const storagePath = `banners/${Date.now()}_${imageToUpload.name}`;
     const storageRef = ref(storage, storagePath);
     
     // 2. Faz upload da imagem
-    const uploadTask = await uploadBytes(storageRef, bannerData.image);
+    const uploadTask = await uploadBytes(storageRef, imageToUpload);
     console.log('Upload realizado com sucesso:', uploadTask);
     
     // 3. Obtém URL pública
@@ -108,19 +148,17 @@ export const deleteBanner = async (bannerId: string): Promise<void> => {
     // Se houver uma imagem, tenta excluí-la do Storage
     if (imageUrl) {
       try {
-        // Extrai o nome do arquivo da URL
-        const urlParts = imageUrl.split('/');
-        const fileNameWithParams = urlParts[urlParts.length - 1];
-        const fileName = fileNameWithParams.split('?')[0];
-        
-        // Monta o caminho completo para o arquivo no storage
-        const storagePath = `banners/${fileName}`;
-        console.log('Tentando excluir arquivo:', storagePath);
+        const imagePath = extractImagePathFromUrl(imageUrl);
+        if (imagePath) {
+          console.log('Tentando excluir arquivo:', imagePath);
 
-        // Cria a referência e exclui a imagem
-        const imageRef = ref(storage, storagePath);
-        await deleteObject(imageRef);
-        console.log('Imagem excluída com sucesso:', storagePath);
+          // Cria a referência e exclui a imagem
+          const imageRef = ref(storage, imagePath);
+          await deleteObject(imageRef);
+          console.log('Imagem excluída com sucesso:', imagePath);
+        } else {
+          console.warn('Não foi possível extrair o caminho da imagem da URL:', imageUrl);
+        }
       } catch (error: any) {
         console.error('Erro ao excluir imagem do banner:', error);
       }

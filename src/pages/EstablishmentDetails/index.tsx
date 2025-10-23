@@ -1,8 +1,10 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Invoice } from '../../services/invoiceService';
+import { Order } from '../../services/orderServices';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import './styles.css';
 
 
@@ -73,6 +75,7 @@ const EstablishmentDetails = () => {
   const { id } = useParams();
   const [establishment, setEstablishment] = useState<Seller | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -80,6 +83,7 @@ const EstablishmentDetails = () => {
     if (id) {
       loadEstablishmentDetails();
       loadInvoices();
+      loadOrders();
     }
   }, [id]);
 
@@ -103,6 +107,40 @@ const EstablishmentDetails = () => {
       setInvoices(storeInvoices);
     } catch (error) {
       console.error('Erro ao carregar faturas:', error);
+    }
+  };
+
+  const loadOrders = async () => {
+    if (!id) return;
+    try {
+      // Busca os pedidos como subcoleção dentro do documento do estabelecimento
+      const ordersCollection = collection(db, 'partners', id, 'orders');
+      const q = query(ordersCollection, orderBy('createdAt', 'desc'));
+      const querySnapshot = await getDocs(q);
+      
+      const sellerOrders: Order[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        
+        // Debug: Log para ver a estrutura dos dados
+        if (sellerOrders.length === 0) {
+          console.log('Exemplo de dados do pedido:', data);
+          console.log('Campos disponíveis:', Object.keys(data));
+        }
+        
+        sellerOrders.push({
+          id: doc.id,
+          ...data
+        } as Order);
+      });
+      
+      console.log(`Encontrados ${sellerOrders.length} pedidos para o estabelecimento ${id}`);
+      if (sellerOrders.length > 0) {
+        console.log('Primeiro pedido (exemplo):', sellerOrders[0]);
+      }
+      setOrders(sellerOrders);
+    } catch (error) {
+      console.error('Erro ao carregar pedidos:', error);
     }
   };
 
@@ -273,6 +311,188 @@ const EstablishmentDetails = () => {
       default:
         return 'Pendente';
     }
+  };
+
+  // Função helper para obter o valor total do pedido
+  const getOrderTotal = (order: any): number => {
+    // Tenta diferentes campos possíveis para o total
+    if (order.total && typeof order.total === 'number') return order.total;
+    if (order.totalAmount && typeof order.totalAmount === 'number') return order.totalAmount;
+    if (order.amount && typeof order.amount === 'number') return order.amount;
+    if (order.totalPrice && typeof order.totalPrice === 'number') return order.totalPrice;
+    if (order.price && typeof order.price === 'number') return order.price;
+    
+    // Se tiver itens, calcula a partir deles
+    if (order.items && Array.isArray(order.items) && order.items.length > 0) {
+      const itemsTotal = order.items.reduce((sum: number, item: any) => {
+        const price = item.price || item.unitPrice || 0;
+        const quantity = item.quantity || 1;
+        return sum + (price * quantity);
+      }, 0);
+      return itemsTotal;
+    }
+    
+    return 0;
+  };
+
+  // Função helper para obter a taxa de entrega
+  const getDeliveryFee = (order: any): number => {
+    if (order.deliveryFee && typeof order.deliveryFee === 'number') return order.deliveryFee;
+    if (order.delivery_fee && typeof order.delivery_fee === 'number') return order.delivery_fee;
+    if (order.shippingFee && typeof order.shippingFee === 'number') return order.shippingFee;
+    if (order.shipping_fee && typeof order.shipping_fee === 'number') return order.shipping_fee;
+    if (order.frete && typeof order.frete === 'number') return order.frete;
+    return 0;
+  };
+
+  // Funções para calcular estatísticas dos pedidos
+  const getOrderStatusText = (status: string) => {
+    const statusMap: { [key: string]: string } = {
+      'not_delivered': 'Não Entregue',
+      'delivered': 'Entregue',
+      'cancelled': 'Cancelado'
+    };
+    return statusMap[status] || status;
+  };
+
+  const calculateOrderStats = () => {
+    const notDelivered = orders.filter(o => o.status === 'not_delivered').length;
+    const delivered = orders.filter(o => o.status === 'delivered').length;
+    const cancelled = orders.filter(o => o.status === 'cancelled').length;
+    const totalRevenue = orders
+      .filter(o => o.status === 'delivered')
+      .reduce((sum, order) => sum + getOrderTotal(order), 0);
+    
+    const stats = {
+      total: orders.length,
+      notDelivered,
+      delivered,
+      cancelled,
+      totalRevenue,
+      cancelRate: orders.length > 0 ? (cancelled / orders.length) * 100 : 0,
+      deliveryRate: orders.length > 0 ? (delivered / orders.length) * 100 : 0,
+      avgTicket: delivered > 0 ? totalRevenue / delivered : 0
+    };
+    return stats;
+  };
+
+  const getOrdersByStatusData = () => {
+    const stats = calculateOrderStats();
+    return [
+      { name: 'Não Entregue', value: stats.notDelivered, color: '#FFA500' },
+      { name: 'Entregue', value: stats.delivered, color: '#28a745' },
+      { name: 'Cancelado', value: stats.cancelled, color: '#dc3545' }
+    ].filter(item => item.value > 0);
+  };
+
+  const getCancelmentAlert = () => {
+    const stats = calculateOrderStats();
+    if (stats.cancelRate > 30) {
+      return { level: 'critical', message: '⚠️ CRÍTICO: Taxa de cancelamento muito alta!' };
+    } else if (stats.cancelRate > 20) {
+      return { level: 'warning', message: '⚠️ ATENÇÃO: Taxa de cancelamento elevada!' };
+    } else if (stats.cancelRate > 10) {
+      return { level: 'moderate', message: '⚠️ Taxa de cancelamento moderada' };
+    }
+    return { level: 'good', message: '✅ Taxa de cancelamento saudável' };
+  };
+
+  const getOrdersByMonthData = () => {
+    const monthlyData: { [key: string]: { total: number; cancelled: number; delivered: number; revenue: number; sortKey: string } } = {};
+    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    
+    orders.forEach(order => {
+      if (order.createdAt) {
+        const date = order.createdAt.toDate();
+        const month = date.getMonth();
+        const year = date.getFullYear();
+        const monthKey = `${monthNames[month]}/${year}`;
+        const sortKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+        
+        if (!monthlyData[monthKey]) {
+          monthlyData[monthKey] = { total: 0, cancelled: 0, delivered: 0, revenue: 0, sortKey };
+        }
+        
+        monthlyData[monthKey].total += 1;
+        
+        if (order.status === 'delivered') {
+          monthlyData[monthKey].delivered += 1;
+          monthlyData[monthKey].revenue += getOrderTotal(order);
+        } else if (order.status === 'cancelled') {
+          monthlyData[monthKey].cancelled += 1;
+        }
+      }
+    });
+
+    return Object.entries(monthlyData)
+      .sort((a, b) => a[1].sortKey.localeCompare(b[1].sortKey))
+      .map(([month, data]) => ({
+        month,
+        total: data.total,
+        entregues: data.delivered,
+        cancelados: data.cancelled,
+        receita: data.revenue
+      }));
+  };
+
+  const getDetailedMonthlyStats = () => {
+    const monthlyData: { 
+      [key: string]: { 
+        total: number; 
+        delivered: number; 
+        notDelivered: number;
+        cancelled: number; 
+        revenue: number;
+        sortKey: string;
+      } 
+    } = {};
+    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    
+    orders.forEach(order => {
+      if (order.createdAt) {
+        const date = order.createdAt.toDate();
+        const month = date.getMonth();
+        const year = date.getFullYear();
+        const monthKey = `${monthNames[month]}/${year}`;
+        const sortKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+        
+        if (!monthlyData[monthKey]) {
+          monthlyData[monthKey] = { 
+            total: 0, 
+            delivered: 0, 
+            notDelivered: 0,
+            cancelled: 0, 
+            revenue: 0,
+            sortKey 
+          };
+        }
+        
+        monthlyData[monthKey].total += 1;
+        
+        if (order.status === 'delivered') {
+          monthlyData[monthKey].delivered += 1;
+          monthlyData[monthKey].revenue += getOrderTotal(order);
+        } else if (order.status === 'not_delivered') {
+          monthlyData[monthKey].notDelivered += 1;
+        } else if (order.status === 'cancelled') {
+          monthlyData[monthKey].cancelled += 1;
+        }
+      }
+    });
+
+    return Object.entries(monthlyData)
+      .sort((a, b) => b[1].sortKey.localeCompare(a[1].sortKey)) // Ordem decrescente (mais recente primeiro)
+      .map(([month, data]) => ({
+        month,
+        total: data.total,
+        delivered: data.delivered,
+        notDelivered: data.notDelivered,
+        cancelled: data.cancelled,
+        cancelRate: data.total > 0 ? ((data.cancelled / data.total) * 100).toFixed(1) : '0',
+        deliveryRate: data.total > 0 ? ((data.delivered / data.total) * 100).toFixed(1) : '0',
+        revenue: data.revenue,
+        avgTicket: data.delivered > 0 ? (data.revenue / data.delivered) : 0
+      }));
   };
 
   if (loading) {
@@ -450,6 +670,256 @@ const EstablishmentDetails = () => {
             </div>
           </div>
         </section>
+
+        <section className="info-section">
+          <h2>Análise de Desempenho do Estabelecimento</h2>
+          
+          {/* Alerta de Taxa de Cancelamento */}
+          {orders.length > 0 && (
+            <div className={`cancelation-alert alert-${getCancelmentAlert().level}`}>
+              <div className="alert-content">
+                <span className="alert-message">{getCancelmentAlert().message}</span>
+                <span className="alert-rate">Taxa: {calculateOrderStats().cancelRate.toFixed(1)}%</span>
+              </div>
+            </div>
+          )}
+          
+          <div className="stats-cards">
+            <div className="stat-card">
+              <div className="stat-icon total">📦</div>
+              <div className="stat-info">
+                <span className="stat-label">Total de Pedidos</span>
+                <span className="stat-value">{calculateOrderStats().total}</span>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon delivered">✅</div>
+              <div className="stat-info">
+                <span className="stat-label">Entregues</span>
+                <span className="stat-value">{calculateOrderStats().delivered}</span>
+                <span className="stat-sublabel">{calculateOrderStats().deliveryRate.toFixed(1)}% dos pedidos</span>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon pending">⏳</div>
+              <div className="stat-info">
+                <span className="stat-label">Não Entregues</span>
+                <span className="stat-value">{calculateOrderStats().notDelivered}</span>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon cancelled">❌</div>
+              <div className="stat-info">
+                <span className="stat-label">Cancelados</span>
+                <span className="stat-value">{calculateOrderStats().cancelled}</span>
+                <span className="stat-sublabel">{calculateOrderStats().cancelRate.toFixed(1)}% dos pedidos</span>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon revenue">💰</div>
+              <div className="stat-info">
+                <span className="stat-label">Receita Total</span>
+                <span className="stat-value">{formatCurrency(calculateOrderStats().totalRevenue)}</span>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon ticket">🎫</div>
+              <div className="stat-info">
+                <span className="stat-label">Ticket Médio</span>
+                <span className="stat-value">{formatCurrency(calculateOrderStats().avgTicket)}</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {orders.length > 0 && (
+          <>
+            <section className="info-section">
+              <h2>Distribuição de Pedidos por Status</h2>
+              <div className="chart-container">
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={getOrdersByStatusData()}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {getOrdersByStatusData().map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </section>
+
+            <section className="info-section">
+              <h2>Evolução Mensal: Entregas vs Cancelamentos</h2>
+              <div className="chart-container">
+                <ResponsiveContainer width="100%" height={350}>
+                  <BarChart data={getOrdersByMonthData()}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip 
+                      formatter={(value, name) => {
+                        if (name === 'receita') return formatCurrency(value as number);
+                        return value;
+                      }}
+                    />
+                    <Legend />
+                    <Bar dataKey="entregues" fill="#28a745" name="Pedidos Entregues" />
+                    <Bar dataKey="cancelados" fill="#dc3545" name="Pedidos Cancelados" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <p className="chart-description">
+                📊 Este gráfico mostra a comparação entre pedidos entregues e cancelados por mês. 
+                Uma alta taxa de cancelamentos pode indicar problemas operacionais.
+              </p>
+            </section>
+
+            <section className="info-section">
+              <h2>Estatísticas Detalhadas por Mês</h2>
+              <div className="monthly-stats-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Mês</th>
+                      <th>Total</th>
+                      <th>Entregues</th>
+                      <th>Não Entregues</th>
+                      <th>Cancelados</th>
+                      <th>Taxa Entrega</th>
+                      <th>Taxa Cancel.</th>
+                      <th>Receita</th>
+                      <th>Ticket Médio</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {getDetailedMonthlyStats().map((stat, index) => (
+                      <tr key={index}>
+                        <td className="month-cell">{stat.month}</td>
+                        <td className="number-cell">{stat.total}</td>
+                        <td className="number-cell success">{stat.delivered}</td>
+                        <td className="number-cell warning">{stat.notDelivered}</td>
+                        <td className="number-cell danger">{stat.cancelled}</td>
+                        <td className="number-cell">
+                          <span className={`delivery-rate ${parseFloat(stat.deliveryRate) > 80 ? 'high' : parseFloat(stat.deliveryRate) > 60 ? 'medium' : 'low'}`}>
+                            {stat.deliveryRate}%
+                          </span>
+                        </td>
+                        <td className="number-cell">
+                          <span className={`cancel-rate ${parseFloat(stat.cancelRate) > 20 ? 'high' : parseFloat(stat.cancelRate) > 10 ? 'medium' : 'low'}`}>
+                            {stat.cancelRate}%
+                          </span>
+                        </td>
+                        <td className="currency-cell">{formatCurrency(stat.revenue)}</td>
+                        <td className="currency-cell">{formatCurrency(stat.avgTicket)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  {getDetailedMonthlyStats().length > 0 && (
+                    <tfoot>
+                      <tr className="total-row">
+                        <td><strong>Total Geral</strong></td>
+                        <td className="number-cell"><strong>{orders.length}</strong></td>
+                        <td className="number-cell success"><strong>{calculateOrderStats().delivered}</strong></td>
+                        <td className="number-cell warning"><strong>{calculateOrderStats().notDelivered}</strong></td>
+                        <td className="number-cell danger"><strong>{calculateOrderStats().cancelled}</strong></td>
+                        <td className="number-cell">
+                          <strong>{calculateOrderStats().deliveryRate.toFixed(1)}%</strong>
+                        </td>
+                        <td className="number-cell">
+                          <strong>{calculateOrderStats().cancelRate.toFixed(1)}%</strong>
+                        </td>
+                        <td className="currency-cell"><strong>{formatCurrency(calculateOrderStats().totalRevenue)}</strong></td>
+                        <td className="currency-cell">
+                          <strong>{formatCurrency(calculateOrderStats().avgTicket)}</strong>
+                        </td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
+              <div className="table-insights">
+                <p className="insight-title">📈 Insights da Análise Mensal:</p>
+                <ul className="insight-list">
+                  <li>✅ <strong>Taxa de Entrega Ideal:</strong> Acima de 80%</li>
+                  <li>⚠️ <strong>Taxa de Cancelamento Aceitável:</strong> Abaixo de 10%</li>
+                  <li>🚨 <strong>Taxa de Cancelamento Crítica:</strong> Acima de 20%</li>
+                </ul>
+              </div>
+            </section>
+
+            <section className="info-section">
+              <h2>Resumo Geral dos Pedidos</h2>
+              <div className="orders-status-grid">
+                <div className="order-status-card success">
+                  <h3>✅ Entregues</h3>
+                  <p className="count">{calculateOrderStats().delivered}</p>
+                  <p className="percentage">{calculateOrderStats().deliveryRate.toFixed(1)}% do total</p>
+                </div>
+                <div className="order-status-card warning">
+                  <h3>⏳ Não Entregues</h3>
+                  <p className="count">{calculateOrderStats().notDelivered}</p>
+                  <p className="percentage">
+                    {((calculateOrderStats().notDelivered / orders.length) * 100).toFixed(1)}% do total
+                  </p>
+                </div>
+                <div className="order-status-card cancelled">
+                  <h3>❌ Cancelados</h3>
+                  <p className="count">{calculateOrderStats().cancelled}</p>
+                  <p className="percentage">{calculateOrderStats().cancelRate.toFixed(1)}% do total</p>
+                </div>
+              </div>
+            </section>
+
+            <section className="info-section">
+              <h2>Últimos Pedidos</h2>
+              <div className="orders-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Data</th>
+                      <th>Status</th>
+                      <th>Total</th>
+                      <th>Taxa de Entrega</th>
+                      <th>Valor Final</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders.slice(0, 10).map((order) => {
+                      const orderTotal = getOrderTotal(order);
+                      const deliveryFee = getDeliveryFee(order);
+                      return (
+                        <tr key={order.id}>
+                          <td>{order.id.substring(0, 8)}...</td>
+                          <td>{order.createdAt ? formatDate(order.createdAt) : 'N/A'}</td>
+                          <td>
+                            <span className={`order-status-badge status-${order.status.toLowerCase()}`}>
+                              {getOrderStatusText(order.status)}
+                            </span>
+                          </td>
+                          <td>{formatCurrency(orderTotal)}</td>
+                          <td>{formatCurrency(deliveryFee)}</td>
+                          <td className="total-value">{formatCurrency(orderTotal + deliveryFee)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </>
+        )}
 
         <section className="info-section">
           <h2>Datas</h2>

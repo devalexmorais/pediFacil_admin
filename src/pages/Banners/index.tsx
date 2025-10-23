@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getMainCategories, Category, getSubcategories } from '../../services/categoryServices';
 import { createBanner, getAllBanners, deleteBanner, Banner } from '../../services/bannerServices';
 import { getAuth } from 'firebase/auth';
+import { getImageInfo, shouldCompressImage } from '../../utils/imageCompression';
 import './styles.css';
 
 interface Subcategory {
@@ -27,6 +28,12 @@ const Banners = () => {
     subcategoryId: '',
     image: null as File | null,
   });
+  const [imageInfo, setImageInfo] = useState<{
+    sizeKB: number;
+    width: number;
+    height: number;
+    needsCompression: boolean;
+  } | null>(null);
 
   useEffect(() => {
     loadBanners();
@@ -137,6 +144,7 @@ const Banners = () => {
       await loadBanners();
       setIsModalOpen(false);
       setNewBanner({ title: '', mainCategoryId: '', subcategoryId: '', image: null });
+      setImageInfo(null);
     } catch (err: any) {
       console.error('Erro completo:', err);
       setError(err.message || 'Erro ao criar banner');
@@ -157,9 +165,26 @@ const Banners = () => {
     }
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setNewBanner({ ...newBanner, image: e.target.files[0] });
+      const file = e.target.files[0];
+      setNewBanner({ ...newBanner, image: file });
+      
+      try {
+        // Obter informações da imagem
+        const info = await getImageInfo(file);
+        const needsCompression = shouldCompressImage(file);
+        
+        setImageInfo({
+          sizeKB: info.sizeKB,
+          width: info.width,
+          height: info.height,
+          needsCompression
+        });
+      } catch (error) {
+        console.error('Erro ao obter informações da imagem:', error);
+        setImageInfo(null);
+      }
     }
   };
 
@@ -297,6 +322,26 @@ const Banners = () => {
                   onChange={handleImageChange}
                   required
                 />
+                {imageInfo && (
+                  <div className="image-info">
+                    <div className="image-details">
+                      <span><strong>Tamanho:</strong> {imageInfo.sizeKB.toFixed(1)} KB</span>
+                      <span><strong>Dimensões:</strong> {imageInfo.width} × {imageInfo.height}px</span>
+                    </div>
+                    {imageInfo.needsCompression && (
+                      <div className="compression-notice">
+                        <span className="compression-icon">⚠️</span>
+                        <span>A imagem será comprimida automaticamente para otimizar o upload</span>
+                      </div>
+                    )}
+                    {!imageInfo.needsCompression && (
+                      <div className="no-compression-notice">
+                        <span className="no-compression-icon">✅</span>
+                        <span>Imagem otimizada - não precisa de compressão</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="modal-footer">
                 <button type="submit" className="save-button">
@@ -308,6 +353,7 @@ const Banners = () => {
                   onClick={() => {
                     setIsModalOpen(false);
                     setNewBanner({ title: '', mainCategoryId: '', subcategoryId: '', image: null });
+                    setImageInfo(null);
                   }}
                 >
                   Cancelar

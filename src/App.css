@@ -18,11 +18,13 @@ body {
 /* Layout principal responsivo */
 .content {
   margin-left: 250px;
-  min-height: 100vh;
+  height: 100vh;
   padding: 20px;
   background-color: #f3f4f6;
   transition: margin-left 0.3s ease, padding 0.3s ease;
   width: calc(100vw - 250px);
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .content-wrapper {
@@ -40,6 +42,9 @@ body {
     margin-left: 80px;
     width: calc(100vw - 80px);
     padding: 18px;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
   
   .content-wrapper {
@@ -53,6 +58,9 @@ body {
     margin-left: 70px;
     width: calc(100vw - 70px);
     padding: 16px;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
   
   .content-wrapper {
@@ -66,6 +74,9 @@ body {
     margin-left: 60px;
     width: calc(100vw - 60px);
     padding: 12px;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
   
   .content-wrapper {
@@ -79,6 +90,9 @@ body {
     margin-left: 50px;
     width: calc(100vw - 50px);
     padding: 10px;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
   
   .content-wrapper {
@@ -92,6 +106,9 @@ body {
     margin-left: 45px;
     width: calc(100vw - 45px);
     padding: 8px;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
   
   .content-wrapper {
