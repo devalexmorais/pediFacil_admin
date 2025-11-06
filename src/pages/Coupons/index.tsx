@@ -35,6 +35,8 @@ interface CouponFormData {
   maxDiscount: number;
   validForFirstOrder: boolean;
   validUntil: string;
+  maxDiscountDisplay: string;
+  valueDisplay: string;
 }
 
 const Coupons: React.FC = () => {
@@ -48,7 +50,9 @@ const Coupons: React.FC = () => {
     value: 0,
     maxDiscount: 0,
     validForFirstOrder: false,
-    validUntil: ''
+    validUntil: '',
+    maxDiscountDisplay: '',
+    valueDisplay: ''
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -106,10 +110,63 @@ const Coupons: React.FC = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target as HTMLInputElement;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
-    }));
+    
+    if (name === 'maxDiscountDisplay') {
+      // Remove tudo exceto números
+      const numbers = value.replace(/\D/g, '');
+      
+      if (numbers === '') {
+        setFormData(prev => ({
+          ...prev,
+          maxDiscountDisplay: '',
+          maxDiscount: 0
+        }));
+      } else {
+        // Converte para formato de centavos e depois para decimal
+        const valueInCents = parseInt(numbers);
+        const formattedValue = (valueInCents / 100).toFixed(2).replace('.', ',');
+        
+        setFormData(prev => ({
+          ...prev,
+          maxDiscountDisplay: formattedValue,
+          maxDiscount: valueInCents / 100
+        }));
+      }
+    } else if (name === 'valueDisplay' && formData.type === 'fixed') {
+      // Remove tudo exceto números
+      const numbers = value.replace(/\D/g, '');
+      
+      if (numbers === '') {
+        setFormData(prev => ({
+          ...prev,
+          valueDisplay: '',
+          value: 0
+        }));
+      } else {
+        // Converte para formato de centavos e depois para decimal
+        const valueInCents = parseInt(numbers);
+        const formattedValue = (valueInCents / 100).toFixed(2).replace('.', ',');
+        
+        setFormData(prev => ({
+          ...prev,
+          valueDisplay: formattedValue,
+          value: valueInCents / 100
+        }));
+      }
+    } else if (name === 'type') {
+      // Quando muda o tipo, limpa o campo de exibição
+      setFormData(prev => ({
+        ...prev,
+        type: value as 'percentage' | 'fixed',
+        valueDisplay: '',
+        value: 0
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : (name === 'code' ? value.toUpperCase() : value)
+      }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -235,7 +292,9 @@ const Coupons: React.FC = () => {
           value: 0,
           maxDiscount: 0,
           validForFirstOrder: false,
-          validUntil: ''
+          validUntil: '',
+          maxDiscountDisplay: '',
+          valueDisplay: ''
         });
         
         setIsModalOpen(false);
@@ -396,55 +455,84 @@ const Coupons: React.FC = () => {
             <h2>Adicionar Novo Cupom</h2>
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label>Código do Cupom:</label>
+                <label htmlFor="code">Código do Cupom</label>
                 <input
                   type="text"
+                  id="code"
                   name="code"
                   value={formData.code}
                   onChange={handleInputChange}
+                  placeholder="Ex: CUPOM10"
                   required
                 />
               </div>
 
               <div className="form-group">
-                <label>Tipo de Desconto:</label>
+                <label htmlFor="type">Tipo de Desconto</label>
                 <select
+                  id="type"
                   name="type"
                   value={formData.type}
                   onChange={handleInputChange}
                   required
                 >
-                  <option value="percentage">Porcentagem</option>
-                  <option value="fixed">Valor Fixo</option>
+                  <option value="percentage">Porcentagem (%)</option>
+                  <option value="fixed">Valor Fixo (R$)</option>
                 </select>
               </div>
 
               <div className="form-group">
-                <label>Valor do Desconto:</label>
+                <label htmlFor={formData.type === 'percentage' ? 'valuePercentage' : 'valueDisplay'}>
+                  {formData.type === 'percentage' ? 'Valor do Desconto (%)' : 'Valor do Desconto (R$)'}
+                </label>
+                {formData.type === 'percentage' ? (
+                  <input
+                    type="text"
+                    id="valuePercentage"
+                    name="valuePercentage"
+                    value={formData.valueDisplay}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setFormData(prev => ({
+                        ...prev,
+                        valueDisplay: val,
+                        value: val ? parseFloat(val) : 0
+                      }));
+                    }}
+                    placeholder="Ex: 10"
+                    required
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    id="valueDisplay"
+                    name="valueDisplay"
+                    value={formData.valueDisplay}
+                    onChange={handleInputChange}
+                    placeholder="0,00"
+                    required
+                  />
+                )}
+              </div>
+
+                              <div className="form-group">
+                <label htmlFor="maxDiscountDisplay">Desconto Máximo (R$)</label>
                 <input
-                  type="number"
-                  name="value"
-                  value={formData.value}
+                  type="text"
+                  id="maxDiscountDisplay"
+                  name="maxDiscountDisplay"
+                  value={formData.maxDiscountDisplay}
                   onChange={handleInputChange}
+                  placeholder="0,00"
                   required
                 />
               </div>
 
               <div className="form-group">
-                <label>Desconto Máximo (R$):</label>
-                <input
-                  type="number"
-                  name="maxDiscount"
-                  value={formData.maxDiscount}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label>
+                <label htmlFor="validForFirstOrder" className="checkbox-label">
                   <input
                     type="checkbox"
+                    id="validForFirstOrder"
                     name="validForFirstOrder"
                     checked={formData.validForFirstOrder}
                     onChange={handleInputChange}
@@ -454,9 +542,10 @@ const Coupons: React.FC = () => {
               </div>
 
               <div className="form-group">
-                <label>Data de Validade (opcional):</label>
+                <label htmlFor="validUntil">Data de Validade (opcional)</label>
                 <input
                   type="datetime-local"
+                  id="validUntil"
                   name="validUntil"
                   value={formData.validUntil}
                   onChange={handleInputChange}

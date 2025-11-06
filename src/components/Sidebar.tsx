@@ -60,16 +60,16 @@ const Sidebar = () => {
       active: location.pathname === '/Finance'
     },
     { 
-      path: '/Plans', 
-      label: 'Planos', 
-      icon: '📋',
-      active: location.pathname === '/Plans'
-    },
-    { 
       path: '/Coupons', 
       label: 'Cupons', 
       icon: '🎫',
       active: location.pathname === '/Coupons'
+    },
+    { 
+      path: '/communication-center', 
+      label: 'Central de Comunicação', 
+      icon: '📢',
+      active: location.pathname === '/communication-center'
     }
   ];
 

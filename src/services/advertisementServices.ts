@@ -13,7 +13,7 @@ import {
   QueryDocumentSnapshot
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { db, storage } from '../config/firebase';
+import { db, storage, auth } from '../config/firebase';
 import { serverTimestamp } from 'firebase/firestore';
 
 export interface Advertisement {
@@ -24,7 +24,14 @@ export interface Advertisement {
   updatedAt: Timestamp;
 }
 
-const advertisementsCollection = collection(db, 'advertisements');
+// Função helper para obter a coleção de advertisements do admin atual
+const getAdvertisementsCollection = () => {
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    throw new Error('Usuário não autenticado');
+  }
+  return collection(db, 'admin', currentUser.uid, 'advertisements');
+};
 
 // Função helper para extrair o path da imagem a partir da URL do Firebase Storage
 const extractImagePathFromUrl = (imageUrl: string): string | null => {
@@ -50,8 +57,13 @@ export const createAdvertisement = async (advertisementData: {
   try {
     console.log('Iniciando upload do advertisement...');
     
-    // 1. Gera caminho único para a imagem
-    const storagePath = `advertisements/${Date.now()}_${advertisementData.image.name}`;
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('Usuário não autenticado');
+    }
+    
+    // 1. Gera caminho único para a imagem (dentro da pasta do admin)
+    const storagePath = `admin/${currentUser.uid}/advertisements/${Date.now()}_${advertisementData.image.name}`;
     const storageRef = ref(storage, storagePath);
     
     // 2. Faz upload da imagem
@@ -62,7 +74,8 @@ export const createAdvertisement = async (advertisementData: {
     const imageUrl = await getDownloadURL(uploadTask.ref);
     console.log('URL obtida:', imageUrl);
 
-    // 4. Cria documento no Firestore
+    // 4. Cria documento no Firestore (subcoleção do admin)
+    const advertisementsCollection = getAdvertisementsCollection();
     const docRef = await addDoc(advertisementsCollection, {
       image: imageUrl,
       isActive: advertisementData.isActive ?? true,
@@ -86,6 +99,8 @@ export const createAdvertisement = async (advertisementData: {
 export const getAllAdvertisements = async (): Promise<Advertisement[]> => {
   try {
     console.log('Buscando todos os advertisements...');
+    
+    const advertisementsCollection = getAdvertisementsCollection();
     const q = query(
       advertisementsCollection,
       orderBy('createdAt', 'desc')
@@ -115,7 +130,12 @@ export const updateAdvertisement = async (
   try {
     console.log('Iniciando atualização do advertisement:', advertisementId);
     
-    const advertisementRef = doc(db, 'advertisements', advertisementId);
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('Usuário não autenticado');
+    }
+    
+    const advertisementRef = doc(db, 'admin', currentUser.uid, 'advertisements', advertisementId);
     const updateFields: any = {
       updatedAt: serverTimestamp()
     };
@@ -128,8 +148,8 @@ export const updateAdvertisement = async (
         const currentData = currentDoc.data();
         const oldImageUrl = currentData.image;
 
-        // Faz upload da nova imagem
-        const storagePath = `advertisements/${Date.now()}_${updateData.image.name}`;
+        // Faz upload da nova imagem (dentro da pasta do admin)
+        const storagePath = `admin/${currentUser.uid}/advertisements/${Date.now()}_${updateData.image.name}`;
         const storageRef = ref(storage, storagePath);
         const uploadTask = await uploadBytes(storageRef, updateData.image);
         const newImageUrl = await getDownloadURL(uploadTask.ref);
@@ -169,8 +189,13 @@ export const deleteAdvertisement = async (advertisementId: string): Promise<void
   try {
     console.log('Iniciando exclusão do advertisement:', advertisementId);
     
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('Usuário não autenticado');
+    }
+    
     // Primeiro, busca o advertisement para obter a URL da imagem
-    const advertisementDoc = await getDoc(doc(db, 'advertisements', advertisementId));
+    const advertisementDoc = await getDoc(doc(db, 'admin', currentUser.uid, 'advertisements', advertisementId));
     if (!advertisementDoc.exists()) {
       throw new Error('Advertisement não encontrado');
     }
@@ -196,7 +221,7 @@ export const deleteAdvertisement = async (advertisementId: string): Promise<void
     }
 
     // Por fim, exclui o documento do advertisement
-    await deleteDoc(doc(db, 'advertisements', advertisementId));
+    await deleteDoc(doc(db, 'admin', currentUser.uid, 'advertisements', advertisementId));
     console.log('Advertisement excluído com sucesso do Firestore');
   } catch (error: any) {
     console.error('Erro ao excluir advertisement:', error);

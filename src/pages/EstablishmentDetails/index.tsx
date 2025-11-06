@@ -4,6 +4,7 @@ import { doc, getDoc, collection, getDocs, query, orderBy } from 'firebase/fires
 import { db } from '../../config/firebase';
 import { Invoice } from '../../services/invoiceService';
 import { Order } from '../../services/orderServices';
+import { Product } from '../../services/productServices';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import './styles.css';
 
@@ -76,6 +77,7 @@ const EstablishmentDetails = () => {
   const [establishment, setEstablishment] = useState<Seller | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -84,6 +86,7 @@ const EstablishmentDetails = () => {
       loadEstablishmentDetails();
       loadInvoices();
       loadOrders();
+      loadProducts();
     }
   }, [id]);
 
@@ -141,6 +144,30 @@ const EstablishmentDetails = () => {
       setOrders(sellerOrders);
     } catch (error) {
       console.error('Erro ao carregar pedidos:', error);
+    }
+  };
+
+  const loadProducts = async () => {
+    if (!id) return;
+    try {
+      // Busca os produtos como subcoleção dentro do documento do estabelecimento
+      const productsCollection = collection(db, 'partners', id, 'products');
+      const q = query(productsCollection, orderBy('createdAt', 'desc'));
+      const querySnapshot = await getDocs(q);
+      
+      const sellerProducts: Product[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        sellerProducts.push({
+          id: doc.id,
+          ...data
+        } as Product);
+      });
+      
+      console.log(`Encontrados ${sellerProducts.length} produtos para o estabelecimento ${id}`);
+      setProducts(sellerProducts);
+    } catch (error) {
+      console.error('Erro ao carregar produtos:', error);
     }
   };
 
@@ -356,11 +383,11 @@ const EstablishmentDetails = () => {
   };
 
   const calculateOrderStats = () => {
-    const notDelivered = orders.filter(o => o.status === 'not_delivered').length;
-    const delivered = orders.filter(o => o.status === 'delivered').length;
-    const cancelled = orders.filter(o => o.status === 'cancelled').length;
+    const notDelivered = orders.filter(o => o.status !== 'DELIVERED' && o.status !== 'CANCELLED').length;
+    const delivered = orders.filter(o => o.status === 'DELIVERED').length;
+    const cancelled = orders.filter(o => o.status === 'CANCELLED').length;
     const totalRevenue = orders
-      .filter(o => o.status === 'delivered')
+      .filter(o => o.status === 'DELIVERED')
       .reduce((sum, order) => sum + getOrderTotal(order), 0);
     
     const stats = {
@@ -415,10 +442,10 @@ const EstablishmentDetails = () => {
         
         monthlyData[monthKey].total += 1;
         
-        if (order.status === 'delivered') {
+        if (order.status === 'DELIVERED') {
           monthlyData[monthKey].delivered += 1;
           monthlyData[monthKey].revenue += getOrderTotal(order);
-        } else if (order.status === 'cancelled') {
+        } else if (order.status === 'CANCELLED') {
           monthlyData[monthKey].cancelled += 1;
         }
       }
@@ -469,13 +496,13 @@ const EstablishmentDetails = () => {
         
         monthlyData[monthKey].total += 1;
         
-        if (order.status === 'delivered') {
+        if (order.status === 'DELIVERED') {
           monthlyData[monthKey].delivered += 1;
           monthlyData[monthKey].revenue += getOrderTotal(order);
-        } else if (order.status === 'not_delivered') {
-          monthlyData[monthKey].notDelivered += 1;
-        } else if (order.status === 'cancelled') {
+        } else if (order.status === 'CANCELLED') {
           monthlyData[monthKey].cancelled += 1;
+        } else {
+          monthlyData[monthKey].notDelivered += 1;
         }
       }
     });
@@ -937,6 +964,60 @@ const EstablishmentDetails = () => {
               </span>
             </div>
           </div>
+        </section>
+
+        <section className="info-section">
+          <h2>Produtos da Loja</h2>
+          {products.length === 0 ? (
+            <p className="no-invoices">Nenhum produto encontrado</p>
+          ) : (
+            <div className="products-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Nome</th>
+                    <th>Descrição</th>
+                    <th>Preço</th>
+                    <th>Promoção</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {products.map((product) => (
+                    <tr key={product.id}>
+                      <td className="product-name">
+                        {product.image && (
+                          <img src={product.image} alt={product.name} className="product-thumbnail" />
+                        )}
+                        {product.name}
+                      </td>
+                      <td className="product-description">{product.description || '-'}</td>
+                      <td className="product-price">
+                        {product.isPromotion && product.promotionalPrice ? (
+                          <>
+                            <span className="old-price">{formatCurrency(product.price)}</span>
+                            <span className="promo-price">{formatCurrency(product.promotionalPrice)}</span>
+                          </>
+                        ) : (
+                          formatCurrency(product.price)
+                        )}
+                      </td>
+                      <td>
+                        <span className={`promo-badge ${product.isPromotion ? 'active' : 'inactive'}`}>
+                          {product.isPromotion ? 'Em Promoção' : 'Não'}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`product-status ${product.isActive ? 'active' : 'inactive'}`}>
+                          {product.isActive ? 'Ativo' : 'Inativo'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
 
         <section className="info-section">

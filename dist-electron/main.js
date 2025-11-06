@@ -1,174 +1,124 @@
-import { app, BrowserWindow, protocol } from "electron";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { readFile } from "node:fs/promises";
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-process.env.APP_ROOT = path.join(__dirname, "..");
-const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
-const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
-const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
-process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : path.join(process.env.APP_ROOT, "dist");
-let win = null;
-function createWindow() {
-  const iconPath = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public", "logo.png") : path.join(process.env.APP_ROOT, "dist", "logo.png");
-  win = new BrowserWindow({
+import { app as c, BrowserWindow as p, protocol as f } from "electron";
+import o from "node:path";
+import { fileURLToPath as m } from "node:url";
+import { readFile as h } from "node:fs/promises";
+const u = o.dirname(m(import.meta.url));
+process.env.APP_ROOT = o.join(u, "..");
+const r = process.env.VITE_DEV_SERVER_URL, b = o.join(process.env.APP_ROOT, "dist-electron"), d = o.join(process.env.APP_ROOT, "dist");
+process.env.VITE_PUBLIC = r ? o.join(process.env.APP_ROOT, "public") : o.join(process.env.APP_ROOT, "dist");
+let e = null;
+function g() {
+  const i = r ? o.join(process.env.APP_ROOT, "public", "logo.png") : o.join(process.env.APP_ROOT, "dist", "logo.png");
+  if (e = new p({
     width: 1200,
     height: 800,
-    icon: iconPath,
-    autoHideMenuBar: true,
-    show: false,
+    icon: i,
+    autoHideMenuBar: !0,
+    show: !1,
     // Não mostra a janela até carregar completamente
     webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      preload: path.join(__dirname, "preload.cjs"),
-      webSecurity: false,
+      nodeIntegration: !1,
+      contextIsolation: !0,
+      preload: o.join(u, "preload.cjs"),
+      webSecurity: !1,
       // Permite carregamento de recursos locais
-      devTools: true,
-      spellcheck: false,
+      devTools: !0,
+      spellcheck: !1,
       // Desabilita correção ortográfica
-      backgroundThrottling: false,
-      allowRunningInsecureContent: true,
-      experimentalFeatures: true,
-      sandbox: false
+      backgroundThrottling: !1,
+      allowRunningInsecureContent: !0,
+      experimentalFeatures: !0,
+      sandbox: !1
     }
-  });
-  win.once("ready-to-show", () => {
-    if (win) {
-      win.show();
-    }
-  });
-  win.webContents.on("did-fail-load", (_event, errorCode, errorDescription) => {
-    console.error("Falha ao carregar a página:", errorCode, errorDescription);
-    setTimeout(() => {
-      if (win) {
-        if (VITE_DEV_SERVER_URL) {
-          win.loadURL(VITE_DEV_SERVER_URL);
-        } else {
-          const indexPath = path.join(RENDERER_DIST, "index.html");
-          console.log("Tentando carregar arquivo:", indexPath);
-          win.loadFile(indexPath);
+  }), e.once("ready-to-show", () => {
+    e && e.show();
+  }), e.webContents.on("did-fail-load", (s, n, a) => {
+    console.error("Falha ao carregar a página:", n, a), setTimeout(() => {
+      if (e)
+        if (r)
+          e.loadURL(r);
+        else {
+          const l = o.join(d, "index.html");
+          console.log("Tentando carregar arquivo:", l), e.loadFile(l);
         }
-      }
     }, 3e3);
-  });
-  win.webContents.on("did-finish-load", () => {
-    console.log("Página carregada com sucesso");
-    win == null ? void 0 : win.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
-  });
-  win.webContents.on("unresponsive", () => {
+  }), e.webContents.on("did-finish-load", () => {
+    console.log("Página carregada com sucesso"), e == null || e.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
+  }), e.webContents.on("unresponsive", () => {
     console.warn("WebContents não responsivo");
-  });
-  win.webContents.on("responsive", () => {
+  }), e.webContents.on("responsive", () => {
     console.log("WebContents responsivo novamente");
-  });
-  win.webContents.setWindowOpenHandler(() => {
-    return { action: "deny" };
-  });
-  win.webContents.on("console-message", (_event, level, message) => {
-    if (level >= 3) {
-      console.error("[Renderer Error]:", message);
-    }
-  });
-  win.webContents.on("render-process-gone", (_event, details) => {
-    console.error("Processo de renderização falhou:", details);
-  });
-  win.webContents.on("did-finish-load", () => {
+  }), e.webContents.setWindowOpenHandler(() => ({ action: "deny" })), e.webContents.on("console-message", (s, n, a) => {
+    n >= 3 && console.error("[Renderer Error]:", a);
+  }), e.webContents.on("render-process-gone", (s, n) => {
+    console.error("Processo de renderização falhou:", n);
+  }), e.webContents.on("did-finish-load", () => {
     console.log("Aplicação carregada com sucesso");
-  });
-  if (VITE_DEV_SERVER_URL) {
-    win.webContents.openDevTools();
-  }
-  if (!VITE_DEV_SERVER_URL) {
-    console.log("Aplicação em modo produção");
-  }
-  if (VITE_DEV_SERVER_URL) {
-    console.log("Carregando do servidor de desenvolvimento:", VITE_DEV_SERVER_URL);
-    win.loadURL(VITE_DEV_SERVER_URL);
-  } else {
-    const indexPath = path.join(RENDERER_DIST, "index.html");
-    console.log("Carregando arquivo local:", indexPath);
+  }), r || console.log("Aplicação em modo produção"), r)
+    console.log("Carregando do servidor de desenvolvimento:", r), e.loadURL(r);
+  else {
+    const s = o.join(d, "index.html");
+    console.log("Carregando arquivo local:", s);
     try {
-      const fs = require("fs");
-      if (fs.existsSync(indexPath)) {
-        const appUrl = "app://index.html";
-        win.loadURL(appUrl);
-      } else {
-        console.error("❌ Arquivo index.html não encontrado, usando método tradicional");
-        win.loadFile(indexPath);
-      }
-    } catch (error) {
-      console.error("Erro ao carregar aplicação:", error);
-      win.loadFile(indexPath);
+      require("fs").existsSync(s) ? e.loadURL("app://index.html") : (console.error("❌ Arquivo index.html não encontrado, usando método tradicional"), e.loadFile(s));
+    } catch (n) {
+      console.error("Erro ao carregar aplicação:", n), e.loadFile(s);
     }
   }
 }
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-    win = null;
-  }
+c.on("window-all-closed", () => {
+  process.platform !== "darwin" && (c.quit(), e = null);
 });
-app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
-  }
+c.on("activate", () => {
+  p.getAllWindows().length === 0 && g();
 });
-process.on("uncaughtException", (error) => {
-  console.error("Erro não tratado:", error);
+process.on("uncaughtException", (i) => {
+  console.error("Erro não tratado:", i);
 });
-app.whenReady().then(async () => {
-  if (!VITE_DEV_SERVER_URL) {
-    protocol.handle("app", async (request) => {
-      const filePath = request.url.slice("app://".length);
-      const fullPath = path.join(RENDERER_DIST, filePath);
-      if (VITE_DEV_SERVER_URL) {
-        console.log("Servindo arquivo via protocolo app://", filePath);
+c.whenReady().then(async () => {
+  r || f.handle("app", async (i) => {
+    const s = i.url.slice(6), n = o.join(d, s);
+    r && console.log("Servindo arquivo via protocolo app://", s);
+    try {
+      const a = await h(n), l = o.extname(n);
+      let t = "text/plain";
+      switch (l) {
+        case ".html":
+          t = "text/html";
+          break;
+        case ".js":
+          t = "application/javascript";
+          break;
+        case ".css":
+          t = "text/css";
+          break;
+        case ".png":
+          t = "image/png";
+          break;
+        case ".jpg":
+        case ".jpeg":
+          t = "image/jpeg";
+          break;
+        case ".svg":
+          t = "image/svg+xml";
+          break;
+        case ".ico":
+          t = "image/x-icon";
+          break;
       }
-      try {
-        const data = await readFile(fullPath);
-        const ext = path.extname(fullPath);
-        let mimeType = "text/plain";
-        switch (ext) {
-          case ".html":
-            mimeType = "text/html";
-            break;
-          case ".js":
-            mimeType = "application/javascript";
-            break;
-          case ".css":
-            mimeType = "text/css";
-            break;
-          case ".png":
-            mimeType = "image/png";
-            break;
-          case ".jpg":
-          case ".jpeg":
-            mimeType = "image/jpeg";
-            break;
-          case ".svg":
-            mimeType = "image/svg+xml";
-            break;
-          case ".ico":
-            mimeType = "image/x-icon";
-            break;
+      return new Response(a, {
+        headers: {
+          "Content-Type": t,
+          "Content-Security-Policy": "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https:;"
         }
-        return new Response(data, {
-          headers: {
-            "Content-Type": mimeType,
-            "Content-Security-Policy": "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https:;"
-          }
-        });
-      } catch (error) {
-        console.error("Erro ao servir arquivo:", fullPath, error);
-        return new Response("File not found", { status: 404 });
-      }
-    });
-  }
-  createWindow();
+      });
+    } catch (a) {
+      return console.error("Erro ao servir arquivo:", n, a), new Response("File not found", { status: 404 });
+    }
+  }), g();
 });
 export {
-  MAIN_DIST,
-  RENDERER_DIST,
-  VITE_DEV_SERVER_URL
+  b as MAIN_DIST,
+  d as RENDERER_DIST,
+  r as VITE_DEV_SERVER_URL
 };

@@ -11,10 +11,10 @@ import Banners from '../pages/Banners';
 import Advertisements from '../pages/Advertisements';
 import Categories from '../pages/Categories';
 import Finance from '../pages/Finance';
-import Plans from '../pages/Plans';
 import UserDetails from '../pages/UserDetails';
 import Coupons from '../pages/Coupons';
 import CityDistricts from '../pages/CityDistricts';
+import CommunicationCenter from '../pages/CommunicationCenter';
 
 // Componente para proteger rotas
 const PrivateRoute = ({ children }: { children: JSX.Element }) => {
@@ -88,11 +88,6 @@ const AppRoutes = () => {
           <Finance />
         </PrivateRoute>
       } />
-      <Route path="/Plans" element={
-        <PrivateRoute>
-          <Plans />
-        </PrivateRoute>
-      } />
       <Route path="/Coupons" element={
         <PrivateRoute>
           <Coupons />
@@ -106,6 +101,11 @@ const AppRoutes = () => {
       <Route path="/cities/:cityId/districts" element={
         <PrivateRoute>
           <CityDistricts />
+        </PrivateRoute>
+      } />
+      <Route path="/communication-center" element={
+        <PrivateRoute>
+          <CommunicationCenter />
         </PrivateRoute>
       } />
 

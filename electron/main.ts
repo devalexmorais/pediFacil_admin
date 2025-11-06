@@ -107,9 +107,10 @@ function createWindow() {
   })
 
   // Abre as ferramentas de desenvolvimento apenas em modo de desenvolvimento
-  if (VITE_DEV_SERVER_URL) {
-    win.webContents.openDevTools()
-  }
+  // Comentado para não abrir o DevTools automaticamente
+  // if (VITE_DEV_SERVER_URL) {
+  //   win.webContents.openDevTools()
+  // }
 
   // Logs essenciais para debug se necessário
   if (!VITE_DEV_SERVER_URL) {
