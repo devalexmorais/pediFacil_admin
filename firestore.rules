@@ -49,11 +49,6 @@ service cloud.firestore {
       allow read: if true;
     }
 
-    // Regra para subcoleção de advertisements do admin
-    match /admin/{adminId}/advertisements/{advertisementId} {
-      allow read, write, delete: if isAuthenticated() && request.auth.uid == adminId;
-    }
-
     match /billing_control/{billingId} {
       allow read: if isAuthenticated();
       allow create, update, delete: if isAdmin();
@@ -74,6 +69,16 @@ service cloud.firestore {
 
     match /banners/{bannerId} {
       allow read: if true;
+      allow create, update, delete: if isAuthenticated();
+    }
+
+    match /advertisements/{advertisementId} {
+      allow read: if true;
+      allow create, update, delete: if isAuthenticated();
+    }
+
+    match /sentNotifications/{notificationId} {
+      allow read: if isAuthenticated();
       allow create, update, delete: if isAuthenticated();
     }
 
@@ -132,17 +137,6 @@ service cloud.firestore {
     match /admin/{adminId} {
       allow read: if true;
       allow write: if isAdmin();
-      
-      match /advertisements/{advertisementId} {
-        allow read: if true;
-        allow write: if isAdmin();
-      }
-      
-      match /sentNotifications/{notificationId} {
-        allow read: if isAuthenticated() && (isOwner(adminId) || isAdmin());
-        allow create: if isAuthenticated() && (isOwner(adminId) || isAdmin());
-        allow update, delete: if isAdmin();
-      }
     }
 
     // ✅ ADICIONE ESTA REGRA AQUI (FORA DOS PARTNERS)

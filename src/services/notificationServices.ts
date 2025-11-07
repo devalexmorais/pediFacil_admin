@@ -10,7 +10,7 @@ import {
   limit,
   deleteDoc
 } from 'firebase/firestore';
-import { db, auth } from '../config/firebase';
+import { db } from '../config/firebase';
 
 export interface Notification {
   id?: string;
@@ -72,16 +72,14 @@ export const sendNotification = async (params: SendNotificationParams): Promise<
     const notificationsRef = collection(db, 'partners', recipientId, 'notifications');
     await addDoc(notificationsRef, notificationData);
 
-    // Adiciona no histórico do admin (subcoleção)
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      const adminNotificationsRef = collection(db, 'admin', currentUser.uid, 'sentNotifications');
-      await addDoc(adminNotificationsRef, {
-        ...notificationData,
-        recipientId,
-        sentAt: Timestamp.now()
-      });
-    }
+    // Adiciona no histórico do admin (coleção principal)
+    const adminNotificationsRef = collection(db, 'sentNotifications');
+    await addDoc(adminNotificationsRef, {
+      ...notificationData,
+      recipientId,
+      recipientCount: 1,
+      sentAt: Timestamp.now()
+    });
 
   } catch (error) {
     console.error('Erro ao enviar notificação:', error);
@@ -132,21 +130,18 @@ export const sendBulkNotification = async (params: SendBulkNotificationParams): 
     // Executa todos os batches
     await Promise.all(batches.map(batch => batch.commit()));
 
-    // Adiciona um registro no histórico do admin (subcoleção)
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      const adminNotificationsRef = collection(db, 'admin', currentUser.uid, 'sentNotifications');
-      await addDoc(adminNotificationsRef, {
-        title,
-        body,
-        recipientCount: recipientIds.length,
-        recipientIds: recipientIds.slice(0, 100), // Salva apenas os primeiros 100 IDs por limite de tamanho
-        sentAt: Timestamp.now(),
-        sentBy: 'admin',
-        status: 'sent',
-        deliveryMethod: 'admin'
-      });
-    }
+    // Adiciona um registro no histórico do admin (coleção principal)
+    const adminNotificationsRef = collection(db, 'sentNotifications');
+    await addDoc(adminNotificationsRef, {
+      title,
+      body,
+      recipientCount: recipientIds.length,
+      recipientIds: recipientIds.slice(0, 100), // Salva apenas os primeiros 100 IDs por limite de tamanho
+      sentAt: Timestamp.now(),
+      sentBy: 'admin',
+      status: 'sent',
+      deliveryMethod: 'admin'
+    });
 
   } catch (error) {
     console.error('Erro ao enviar notificações em massa:', error);
@@ -159,12 +154,7 @@ export const sendBulkNotification = async (params: SendBulkNotificationParams): 
  */
 export const getSentNotificationsHistory = async (limitCount: number = 50) => {
   try {
-    const currentUser = auth.currentUser;
-    if (!currentUser) {
-      throw new Error('Usuário não autenticado');
-    }
-
-    const notificationsRef = collection(db, 'admin', currentUser.uid, 'sentNotifications');
+    const notificationsRef = collection(db, 'sentNotifications');
     const q = query(notificationsRef, orderBy('sentAt', 'desc'), limit(limitCount));
     const snapshot = await getDocs(q);
 
@@ -183,12 +173,7 @@ export const getSentNotificationsHistory = async (limitCount: number = 50) => {
  */
 export const deleteNotificationFromHistory = async (notificationId: string): Promise<void> => {
   try {
-    const currentUser = auth.currentUser;
-    if (!currentUser) {
-      throw new Error('Usuário não autenticado');
-    }
-
-    const notificationRef = doc(db, 'admin', currentUser.uid, 'sentNotifications', notificationId);
+    const notificationRef = doc(db, 'sentNotifications', notificationId);
     await deleteDoc(notificationRef);
   } catch (error) {
     console.error('Erro ao excluir notificação do histórico:', error);

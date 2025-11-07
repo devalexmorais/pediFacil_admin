@@ -205,7 +205,7 @@ const Home = () => {
             <div className="metric-body">
               <div className="metric-main">
                 <div className="metric-value">
-                  R$ {dashboardData.totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  R$ {dashboardData.totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
               </div>
               <div className="metric-details">
@@ -216,7 +216,7 @@ const Home = () => {
                 <div className="detail-item">
                   <span>Ticket Médio</span>
                   <span>
-                    R$ {dashboardData.averageOrderValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    R$ {dashboardData.averageOrderValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
                 <div className="detail-item">

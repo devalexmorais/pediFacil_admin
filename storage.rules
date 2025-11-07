@@ -30,6 +30,11 @@ service firebase.storage {
       allow read, write: if true;
     }
 
+    // Permissões para advertisements
+    match /advertisements/{imageId} {
+      allow read, write: if true;
+    }
+
     // Permissões para categorias
     match /categories/{imageId} {
       allow read, write: if true;
