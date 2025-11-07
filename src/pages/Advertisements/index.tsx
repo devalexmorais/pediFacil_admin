@@ -232,7 +232,6 @@ const Advertisements = () => {
             <h2>{editingAdvertisement ? 'Editar Advertisement' : 'Adicionar Advertisement'}</h2>
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label htmlFor="image">Imagem do Advertisement</label>
                 <input
                   type="file"
                   id="image"
@@ -240,6 +239,9 @@ const Advertisements = () => {
                   onChange={handleImageChange}
                   required={!editingAdvertisement}
                 />
+                <div className="image-size-warning">
+                  ⚠️ Tamanho recomendado: 1000x1500 pixels
+                </div>
                 {editingAdvertisement && !formData.image && (
                   <p className="form-help">Deixe em branco para manter a imagem atual</p>
                 )}

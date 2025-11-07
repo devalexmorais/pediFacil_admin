@@ -147,8 +147,8 @@ export const deleteBanner = async (bannerId: string): Promise<void> => {
 
     // Se houver uma imagem, tenta excluí-la do Storage
     if (imageUrl) {
+      const imagePath = extractImagePathFromUrl(imageUrl);
       try {
-        const imagePath = extractImagePathFromUrl(imageUrl);
         if (imagePath) {
           console.log('Tentando excluir arquivo:', imagePath);
 
@@ -160,7 +160,12 @@ export const deleteBanner = async (bannerId: string): Promise<void> => {
           console.warn('Não foi possível extrair o caminho da imagem da URL:', imageUrl);
         }
       } catch (error: any) {
-        console.error('Erro ao excluir imagem do banner:', error);
+        // Ignora o erro se o arquivo não existir
+        if (error.code !== 'storage/object-not-found') {
+          console.error('Erro ao excluir imagem do banner:', error);
+        } else {
+          console.log('Imagem já não existe no storage:', imagePath);
+        }
       }
     }
 

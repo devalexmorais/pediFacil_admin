@@ -158,15 +158,20 @@ export const updateAdvertisement = async (
 
         // Tenta excluir a imagem antiga
         if (oldImageUrl) {
+          const oldImagePath = extractImagePathFromUrl(oldImageUrl);
           try {
-            const oldImagePath = extractImagePathFromUrl(oldImageUrl);
             if (oldImagePath) {
               const oldImageRef = ref(storage, oldImagePath);
-            await deleteObject(oldImageRef);
+              await deleteObject(oldImageRef);
               console.log('Imagem antiga excluída com sucesso:', oldImagePath);
             }
-          } catch (error) {
-            console.error('Erro ao excluir imagem antiga:', error);
+          } catch (error: any) {
+            // Ignora o erro se o arquivo não existir
+            if (error.code !== 'storage/object-not-found') {
+              console.error('Erro ao excluir imagem antiga:', error);
+            } else {
+              console.log('Imagem antiga já não existe no storage:', oldImagePath);
+            }
           }
         }
       }
@@ -205,18 +210,23 @@ export const deleteAdvertisement = async (advertisementId: string): Promise<void
 
     // Se houver uma imagem, tenta excluí-la do Storage
     if (imageUrl) {
+      const imagePath = extractImagePathFromUrl(imageUrl);
       try {
-        const imagePath = extractImagePathFromUrl(imageUrl);
         if (imagePath) {
           console.log('Tentando excluir arquivo:', imagePath);
 
-        // Cria a referência e exclui a imagem
+          // Cria a referência e exclui a imagem
           const imageRef = ref(storage, imagePath);
-        await deleteObject(imageRef);
+          await deleteObject(imageRef);
           console.log('Imagem excluída com sucesso:', imagePath);
         }
       } catch (error: any) {
-        console.error('Erro ao excluir imagem do advertisement:', error);
+        // Ignora o erro se o arquivo não existir
+        if (error.code !== 'storage/object-not-found') {
+          console.error('Erro ao excluir imagem do advertisement:', error);
+        } else {
+          console.log('Imagem já não existe no storage:', imagePath);
+        }
       }
     }
 

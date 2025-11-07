@@ -124,27 +124,31 @@ export const deleteCategory = async (categoryId: string): Promise<void> => {
 
     // Se houver uma imagem, tenta excluí-la do Storage
     if (imageUrl) {
+      const urlParts = imageUrl.split('/');
+      const fileNameWithParams = urlParts[urlParts.length - 1];
+      const fileName = fileNameWithParams.split('?')[0];
+      const storagePath = `categories/${fileName}`;
+      
       try {
-        const urlParts = imageUrl.split('/');
-        const fileNameWithParams = urlParts[urlParts.length - 1];
-        const fileName = fileNameWithParams.split('?')[0];
-        
         console.log('Nome do arquivo extraído:', fileName);
-        
-        const storagePath = `categories/${fileName}`;
         console.log('Tentando excluir arquivo:', storagePath);
 
         const imageRef = ref(storage, storagePath);
         await deleteObject(imageRef);
         console.log('Imagem excluída com sucesso:', storagePath);
       } catch (error: any) {
-        console.error('Erro ao excluir imagem:', {
-          error,
-          imageUrl,
-          message: error.message,
-          code: error.code,
-          stack: error.stack
-        });
+        // Ignora o erro se o arquivo não existir
+        if (error.code !== 'storage/object-not-found') {
+          console.error('Erro ao excluir imagem:', {
+            error,
+            imageUrl,
+            message: error.message,
+            code: error.code,
+            stack: error.stack
+          });
+        } else {
+          console.log('Imagem já não existe no storage:', storagePath);
+        }
       }
     }
 

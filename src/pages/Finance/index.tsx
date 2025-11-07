@@ -36,28 +36,7 @@ interface MonthOption {
   label: string;
 }
 
-const PREMIUM_PRICE = 49.99;
-
-// Função para calcular custos operacionais baseados nos cupons do admin utilizados
-const calculateOperationalCosts = (adminCouponsDiscounts: number, totalOrders: number) => {
-  // Os custos operacionais da plataforma são principalmente:
-  // 1. Cupons do admin (descontos fornecidos pela plataforma)
-  // 2. Custos de infraestrutura mínimos baseados no volume
-  
-  // Custos mínimos de infraestrutura (baseados no volume de operações)
-  const infrastructureCosts = Math.max(200, totalOrders * 0.30); // Mínimo R$ 200, R$ 0,30 por pedido
-  
-  // Total dos custos operacionais = cupons do admin + infraestrutura
-  const totalOperationalCosts = adminCouponsDiscounts + infrastructureCosts;
-  
-  console.log('Custos operacionais calculados:', {
-    cuponsAdmin: adminCouponsDiscounts.toFixed(2),
-    infraestrutura: infrastructureCosts.toFixed(2),
-    total: totalOperationalCosts.toFixed(2)
-  });
-  
-  return totalOperationalCosts;
-};
+const PREMIUM_PRICE = 39.90;
 
 interface ChartDataItem {
   name: string;
@@ -136,6 +115,11 @@ const Finance = () => {
         snapshot.docs.filter(doc => {
           const orderData = doc.data();
           if (!orderData.createdAt) return false;
+          
+          // Filtrar apenas pedidos entregues (concluídos)
+          if (orderData.status !== 'delivered') {
+            return false;
+          }
           
           let orderDate;
           if (orderData.createdAt instanceof Timestamp) {
@@ -221,10 +205,16 @@ const Finance = () => {
 
       // Se não encontrou taxas nas subcoleções, calcular baseado nos pedidos do mês anterior
       if (prevServiceFees === 0 && prevFilteredOrders.length > 0) {
-        console.log('Taxas do mês anterior zeradas, calculando baseado nos pedidos...');
+        console.log('Taxas do mês anterior zeradas, calculando baseado nos pedidos entregues...');
         
         prevFilteredOrders.forEach(doc => {
           const orderData = doc.data();
+          
+          // Garantir que só calcula taxa para pedidos entregues
+          if (orderData.status !== 'delivered') {
+            return;
+          }
+          
           const orderTotal = orderData.finalPrice || orderData.totalPrice || 0;
           
           // Verificar se o estabelecimento é premium para aplicar taxa correta
@@ -236,18 +226,25 @@ const Finance = () => {
             const partnerDoc = partnersSnapshot.docs.find(p => p.id === partnerId);
             if (partnerDoc) {
               const partnerData = partnerDoc.data();
+              
+              // Verificar premium tanto no nível raiz quanto em store (para compatibilidade)
               const isPremium = partnerData.store?.isPremium === true;
+              const premiumExpiresAt = partnerData.premiumExpiresAt || partnerData.store?.premiumExpiresAt;
+              const productIdentifier = partnerData.productIdentifier;
+              
+              // Verificar se é premium pelo productIdentifier ou isPremium
+              const hasPremium = isPremium || productIdentifier === 'parceiros_premium';
               
               // Verificar se estava premium durante o mês anterior
-              if (isPremium && partnerData.store?.premiumExpiresAt) {
+              if (hasPremium && premiumExpiresAt) {
                 let expirationDate;
                 
-                if (partnerData.store.premiumExpiresAt instanceof Timestamp) {
-                  expirationDate = partnerData.store.premiumExpiresAt.toDate();
-                } else if (typeof partnerData.store.premiumExpiresAt === 'string') {
-                  expirationDate = new Date(partnerData.store.premiumExpiresAt);
-                } else if (partnerData.store.premiumExpiresAt.seconds) {
-                  expirationDate = new Date(partnerData.store.premiumExpiresAt.seconds * 1000);
+                if (premiumExpiresAt instanceof Timestamp) {
+                  expirationDate = premiumExpiresAt.toDate();
+                } else if (typeof premiumExpiresAt === 'string') {
+                  expirationDate = new Date(premiumExpiresAt);
+                } else if (premiumExpiresAt.seconds) {
+                  expirationDate = new Date(premiumExpiresAt.seconds * 1000);
                 } else {
                   expirationDate = new Date();
                 }
@@ -270,29 +267,49 @@ const Finance = () => {
       // Calcular parceiros premium do mês anterior
       const prevPremiumPartners = partnersSnapshot.docs.filter(doc => {
         const partnerData = doc.data();
-        const isPremium = partnerData.store?.isPremium === true;
         
-        if (isPremium && partnerData.store?.premiumExpiresAt) {
+        // Verificar premium tanto no nível raiz quanto em store (para compatibilidade)
+        const isPremium = partnerData.store?.isPremium === true;
+        const premiumExpiresAt = partnerData.premiumExpiresAt || partnerData.store?.premiumExpiresAt;
+        const productIdentifier = partnerData.productIdentifier;
+        
+        // Verificar se é premium pelo productIdentifier ou isPremium
+        const hasPremium = isPremium || productIdentifier === 'parceiros_premium';
+        
+        if (hasPremium && premiumExpiresAt) {
           let expirationDate;
           
-          if (partnerData.store.premiumExpiresAt instanceof Timestamp) {
-            expirationDate = partnerData.store.premiumExpiresAt.toDate();
-          } else if (typeof partnerData.store.premiumExpiresAt === 'string') {
-            expirationDate = new Date(partnerData.store.premiumExpiresAt);
-          } else if (partnerData.store.premiumExpiresAt.seconds) {
-            expirationDate = new Date(partnerData.store.premiumExpiresAt.seconds * 1000);
+          if (premiumExpiresAt instanceof Timestamp) {
+            expirationDate = premiumExpiresAt.toDate();
+          } else if (typeof premiumExpiresAt === 'string') {
+            expirationDate = new Date(premiumExpiresAt);
+          } else if (premiumExpiresAt.seconds) {
+            expirationDate = new Date(premiumExpiresAt.seconds * 1000);
           } else {
-            return isPremium;
+            return hasPremium;
           }
           
           return expirationDate >= prevStartDate;
         }
         
-        return isPremium;
+        return hasPremium;
       });
 
       const prevPremiumRevenue = prevPremiumPartners.length * PREMIUM_PRICE;
-      const prevPlatformRevenue = prevServiceFees + prevPremiumRevenue - prevAdminCouponsDiscounts;
+      const prevGrossRevenue = prevServiceFees + prevPremiumRevenue;
+
+      // Calcular créditos totais dos estabelecimentos (apenas para info)
+      let prevTotalCredits = 0;
+      partnersSnapshot.docs.forEach(doc => {
+        const partnerData = doc.data();
+        const credits = partnerData.credits || 0;
+        prevTotalCredits += credits;
+      });
+      
+      // Custos operacionais = cupons admin usados
+      const prevOperationalCosts = prevAdminCouponsDiscounts;
+      const prevNetProfit = prevGrossRevenue - prevOperationalCosts;
+      const prevPlatformRevenue = prevGrossRevenue - prevAdminCouponsDiscounts;
 
       return {
         period: {
@@ -307,10 +324,10 @@ const Finance = () => {
           serviceFees: prevServiceFees,
           premiumSubscriptions: prevPremiumRevenue,
           averageTicket: prevFilteredOrders.length > 0 ? prevTotalSales / prevFilteredOrders.length : 0,
-          operationalCosts: calculateOperationalCosts(prevAdminCouponsDiscounts, prevFilteredOrders.length),
-          netProfit: prevPlatformRevenue - calculateOperationalCosts(prevAdminCouponsDiscounts, prevFilteredOrders.length),
-          profitMargin: prevPlatformRevenue > 0 ? ((prevPlatformRevenue - calculateOperationalCosts(prevAdminCouponsDiscounts, prevFilteredOrders.length)) / prevPlatformRevenue) * 100 : 0,
-          costPerOrder: prevFilteredOrders.length > 0 ? calculateOperationalCosts(prevAdminCouponsDiscounts, prevFilteredOrders.length) / prevFilteredOrders.length : 0,
+          operationalCosts: prevOperationalCosts,
+          netProfit: prevNetProfit,
+          profitMargin: prevGrossRevenue > 0 ? (prevNetProfit / prevGrossRevenue) * 100 : 0,
+          costPerOrder: prevFilteredOrders.length > 0 ? prevOperationalCosts / prevFilteredOrders.length : 0,
           revenueGrowth: 0, // Será calculado abaixo
           activePartners: partnersSnapshot.docs.filter(doc => doc.data().isActive !== false).length,
           premiumPartners: prevPremiumPartners.length,
@@ -481,6 +498,11 @@ const Finance = () => {
             const orderData = doc.data();
             if (!orderData.createdAt) return false;
             
+            // Filtrar apenas pedidos entregues (concluídos)
+            if (orderData.status !== 'delivered') {
+              return false;
+            }
+            
             // Converter timestamp para Date
             let orderDate;
             if (orderData.createdAt instanceof Timestamp) {
@@ -569,34 +591,63 @@ const Finance = () => {
         // Contar parceiros premium ativos
         const premiumPartners = partnersSnapshot.docs.filter(doc => {
           const partnerData = doc.data();
+          
+          // Verificar premium tanto no nível raiz quanto em store (para compatibilidade)
           const isPremium = partnerData.store?.isPremium === true;
+          const premiumExpiresAt = partnerData.premiumExpiresAt || partnerData.store?.premiumExpiresAt;
+          const productIdentifier = partnerData.productIdentifier;
+          
+          // Verificar se é premium pelo productIdentifier ou isPremium
+          const hasPremium = isPremium || productIdentifier === 'parceiros_premium';
           
           // Verificar se estava premium durante o mês selecionado
-          if (isPremium && partnerData.store?.premiumExpiresAt) {
+          if (hasPremium && premiumExpiresAt) {
             let expirationDate;
             
-            if (partnerData.store.premiumExpiresAt instanceof Timestamp) {
-              expirationDate = partnerData.store.premiumExpiresAt.toDate();
-            } else if (typeof partnerData.store.premiumExpiresAt === 'string') {
-              expirationDate = new Date(partnerData.store.premiumExpiresAt);
-            } else if (partnerData.store.premiumExpiresAt.seconds) {
-              expirationDate = new Date(partnerData.store.premiumExpiresAt.seconds * 1000);
+            if (premiumExpiresAt instanceof Timestamp) {
+              expirationDate = premiumExpiresAt.toDate();
+            } else if (typeof premiumExpiresAt === 'string') {
+              expirationDate = new Date(premiumExpiresAt);
+            } else if (premiumExpiresAt.seconds) {
+              expirationDate = new Date(premiumExpiresAt.seconds * 1000);
             } else {
-              return isPremium; // Se não conseguir determinar data de expiração, considera como premium
+              return hasPremium; // Se não conseguir determinar data de expiração, considera como premium
             }
             
-            // Se a data de expiração é posterior ao fim do mês selecionado, estava premium nesse mês
+            // Se a data de expiração é posterior ao início do mês selecionado, estava premium nesse mês
             return expirationDate >= startDate;
           }
           
-          return isPremium;
+          return hasPremium;
         });
         
         const premiumPartnersCount = premiumPartners.length;
         const premiumRevenue = premiumPartnersCount * PREMIUM_PRICE;
         
         console.log(`Parceiros premium: ${premiumPartnersCount}, Receita de assinaturas: R$ ${premiumRevenue.toFixed(2)}`);
-        console.log(`Filtrados: ${filteredOrders.length} pedidos do período, ${filteredAppFees.length} taxas do período`);
+        console.log(`Filtrados: ${filteredOrders.length} pedidos ENTREGUES do período, ${filteredAppFees.length} taxas do período`);
+        
+        // Debug: contar total de pedidos (incluindo não entregues) para comparação
+        const allOrdersInPeriod = ordersSnapshots.flatMap(snapshot => 
+          snapshot.docs.filter(doc => {
+            const orderData = doc.data();
+            if (!orderData.createdAt) return false;
+            let orderDate;
+            if (orderData.createdAt instanceof Timestamp) {
+              orderDate = orderData.createdAt.toDate();
+            } else if (typeof orderData.createdAt === 'string') {
+              orderDate = new Date(orderData.createdAt);
+            } else if (orderData.createdAt.seconds) {
+              orderDate = new Date(orderData.createdAt.seconds * 1000);
+            } else {
+              return false;
+            }
+            return orderDate >= startDate && orderDate <= endDate;
+          })
+        );
+        console.log(`Total de pedidos no período (todos status): ${allOrdersInPeriod.length}`);
+        console.log(`Pedidos entregues: ${filteredOrders.length}`);
+        console.log(`Pedidos com outros status: ${allOrdersInPeriod.length - filteredOrders.length}`);
         
         // Calcular métricas
         let totalSales = 0;
@@ -675,14 +726,22 @@ const Finance = () => {
           console.log(`==========================================`);
           console.log(`FALLBACK: CALCULANDO BASEADO NOS PEDIDOS`);
           console.log(`==========================================`);
-          console.log(`Taxas de serviço zeradas, calculando baseado nos pedidos...`);
+          console.log(`Taxas de serviço zeradas, calculando baseado nos pedidos entregues...`);
           
           filteredOrders.forEach((doc, index) => {
             const orderData = doc.data();
+            
+            // Garantir que só calcula taxa para pedidos entregues
+            if (orderData.status !== 'delivered') {
+              console.log(`Pedido ${index + 1} ignorado (status: ${orderData.status})`);
+              return;
+            }
+            
             const orderTotal = orderData.finalPrice || orderData.totalPrice || 0;
             
             console.log(`Pedido ${index + 1}/${filteredOrders.length}:`);
             console.log(`  ID: ${doc.id}`);
+            console.log(`  status: ${orderData.status}`);
             console.log(`  finalPrice: ${orderData.finalPrice}`);
             console.log(`  totalPrice: ${orderData.totalPrice}`);
             console.log(`  orderTotal usado: R$ ${orderTotal.toFixed(2)}`);
@@ -698,19 +757,26 @@ const Finance = () => {
               const partnerDoc = partnersSnapshot.docs.find(p => p.id === partnerId);
               if (partnerDoc) {
                 const partnerData = partnerDoc.data();
+                
+                // Verificar premium tanto no nível raiz quanto em store (para compatibilidade)
                 const isPremium = partnerData.store?.isPremium === true;
-                console.log(`  isPremium: ${isPremium}`);
+                const premiumExpiresAt = partnerData.premiumExpiresAt || partnerData.store?.premiumExpiresAt;
+                const productIdentifier = partnerData.productIdentifier;
+                
+                // Verificar se é premium pelo productIdentifier ou isPremium
+                const hasPremium = isPremium || productIdentifier === 'parceiros_premium';
+                console.log(`  hasPremium: ${hasPremium} (isPremium: ${isPremium}, productIdentifier: ${productIdentifier})`);
                 
                 // Verificar se estava premium durante o mês selecionado
-                if (isPremium && partnerData.store?.premiumExpiresAt) {
+                if (hasPremium && premiumExpiresAt) {
                   let expirationDate;
                   
-                  if (partnerData.store.premiumExpiresAt instanceof Timestamp) {
-                    expirationDate = partnerData.store.premiumExpiresAt.toDate();
-                  } else if (typeof partnerData.store.premiumExpiresAt === 'string') {
-                    expirationDate = new Date(partnerData.store.premiumExpiresAt);
-                  } else if (partnerData.store.premiumExpiresAt.seconds) {
-                    expirationDate = new Date(partnerData.store.premiumExpiresAt.seconds * 1000);
+                  if (premiumExpiresAt instanceof Timestamp) {
+                    expirationDate = premiumExpiresAt.toDate();
+                  } else if (typeof premiumExpiresAt === 'string') {
+                    expirationDate = new Date(premiumExpiresAt);
+                  } else if (premiumExpiresAt.seconds) {
+                    expirationDate = new Date(premiumExpiresAt.seconds * 1000);
                   } else {
                     expirationDate = new Date();
                   }
@@ -748,20 +814,46 @@ const Finance = () => {
           console.log(`==========================================`);
         }
         
-        // Calcular receita da plataforma (a receita real do app)
-        const platformRevenue = serviceFees + premiumRevenue - adminCouponsDiscounts;
+        // Calcular receita bruta da plataforma (sem descontar custos)
+        const grossRevenue = serviceFees + premiumRevenue;
         
         // Calcular ticket médio dos pedidos
         const averageTicket = filteredOrders.length > 0 ? totalSales / filteredOrders.length : 0;
         
-        // Calcular custos operacionais baseados nos cupons do admin utilizados
-        const operationalCosts = calculateOperationalCosts(adminCouponsDiscounts, filteredOrders.length);
+        // Calcular créditos dos estabelecimentos (apenas para informação)
+        let totalCredits = 0;
+        partnersSnapshot.docs.forEach(doc => {
+          const partnerData = doc.data();
+          const credits = partnerData.credits || 0;
+          totalCredits += credits;
+        });
         
-        // Calcular lucro líquido
-        const netProfit = platformRevenue - operationalCosts;
+        // Custos operacionais = cupons admin usados
+        const operationalCosts = adminCouponsDiscounts;
         
-        // Calcular margem de lucro
-        const profitMargin = platformRevenue > 0 ? (netProfit / platformRevenue) * 100 : 0;
+        console.log(`==========================================`);
+        console.log(`VERIFICAÇÃO DE CUSTOS:`);
+        console.log(`adminCouponsDiscounts: R$ ${adminCouponsDiscounts.toFixed(2)}`);
+        console.log(`operationalCosts: R$ ${operationalCosts.toFixed(2)}`);
+        console.log(`Créditos dos estabelecimentos (info): R$ ${totalCredits.toFixed(2)}`);
+        console.log(`==========================================`);
+        
+        // Calcular lucro líquido = Receita Bruta - Custos Operacionais
+        const netProfit = grossRevenue - operationalCosts;
+        
+        console.log(`==========================================`);
+        console.log(`CÁLCULO DO LUCRO:`);
+        console.log(`Receita Bruta (grossRevenue): R$ ${grossRevenue.toFixed(2)}`);
+        console.log(`Custos (operationalCosts): R$ ${operationalCosts.toFixed(2)}`);
+        console.log(`Lucro Líquido (netProfit): R$ ${netProfit.toFixed(2)}`);
+        console.log(`Fórmula: ${grossRevenue.toFixed(2)} - ${operationalCosts.toFixed(2)} = ${netProfit.toFixed(2)}`);
+        console.log(`==========================================`);
+        
+        // Calcular receita líquida (para compatibilidade com a estrutura antiga)
+        const platformRevenue = grossRevenue - adminCouponsDiscounts;
+        
+        // Calcular margem de lucro baseada na receita bruta
+        const profitMargin = grossRevenue > 0 ? (netProfit / grossRevenue) * 100 : 0;
         
         // Calcular custo por pedido
         const costPerOrder = filteredOrders.length > 0 ? operationalCosts / filteredOrders.length : 0;
@@ -789,14 +881,22 @@ const Finance = () => {
         console.log(`==========================================`);
         console.log(`MÉTRICAS FINAIS CALCULADAS:`);
         console.log(`==========================================`);
-        console.log(`Volume de Vendas: R$ ${totalSales.toFixed(2)}`);
+        console.log(`Volume de Vendas (Lojistas): R$ ${totalSales.toFixed(2)}`);
         console.log(`Total de Pedidos: ${filteredOrders.length}`);
         console.log(`Ticket Médio: R$ ${averageTicket.toFixed(2)}`);
+        console.log(`---`);
+        console.log(`RECEITAS DA PLATAFORMA:`);
         console.log(`Taxas de Serviço: R$ ${serviceFees.toFixed(2)}`);
         console.log(`Assinaturas Premium: R$ ${premiumRevenue.toFixed(2)}`);
-        console.log(`Cupons Admin (Descontos): R$ ${adminCouponsDiscounts.toFixed(2)}`);
-        console.log(`Receita Total: R$ ${platformRevenue.toFixed(2)}`);
-        console.log(`Custos Operacionais: R$ ${operationalCosts.toFixed(2)}`);
+        console.log(`Receita Bruta Total: R$ ${grossRevenue.toFixed(2)}`);
+        console.log(`---`);
+        console.log(`CUSTOS OPERACIONAIS:`);
+        console.log(`Cupons Admin Usados: R$ ${operationalCosts.toFixed(2)}`);
+        console.log(`(Créditos dos estabelecimentos: R$ ${totalCredits.toFixed(2)})`);
+        console.log(`---`);
+        console.log(`RESULTADO FINAL:`);
+        console.log(`Receita Bruta: R$ ${grossRevenue.toFixed(2)}`);
+        console.log(`(-) Cupons Admin: R$ ${operationalCosts.toFixed(2)}`);
         console.log(`Lucro Líquido: R$ ${netProfit.toFixed(2)}`);
         console.log(`Margem de Lucro: ${profitMargin.toFixed(2)}%`);
         console.log(`==========================================`);
@@ -953,7 +1053,7 @@ const Finance = () => {
             <div className="metric-card net">
               <h3>Receita Total</h3>
               <div className="metric-value">
-                {monthlyMetrics.metrics.platformRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                {(monthlyMetrics.metrics.serviceFees + monthlyMetrics.metrics.premiumSubscriptions).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </div>
               <div className="metric-subtitle">
                 taxas + assinaturas
@@ -986,7 +1086,7 @@ const Finance = () => {
                 {monthlyMetrics.metrics.netProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </div>
               <div className="metric-subtitle">
-                receita - custos operacionais
+                receita bruta - custos totais
               </div>
             </div>
 
@@ -1019,6 +1119,16 @@ const Finance = () => {
                 vs mês anterior
               </div>
             </div>
+
+            <div className="metric-card cost">
+              <h3>Cupons Admin Usados</h3>
+              <div className="metric-value">
+                {monthlyMetrics.metrics.operationalCosts.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </div>
+              <div className="metric-subtitle">
+                custo operacional do mês
+              </div>
+            </div>
           </div>
 
           <div className="details-grid">
@@ -1038,36 +1148,44 @@ const Finance = () => {
                   <span></span>
                 </div>
                 <div className="summary-item">
-                  <span>Taxas de Serviço</span>
+                  <span>Taxas de Serviço (comissões)</span>
                   <span>{monthlyMetrics.metrics.serviceFees.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                 </div>
                 <div className="summary-item">
                   <span>Assinaturas Premium</span>
                   <span>{monthlyMetrics.metrics.premiumSubscriptions.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                 </div>
-                <div className="summary-item expense">
-                  <span>Despesas com Cupons</span>
-                  <span>- {monthlyMetrics.metrics.totalDiscounts.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                </div>
                 <div className="summary-item total">
-                  <span>Receita Total</span>
-                  <span>{monthlyMetrics.metrics.platformRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                  <span>Receita Bruta Total</span>
+                  <span>{(monthlyMetrics.metrics.serviceFees + monthlyMetrics.metrics.premiumSubscriptions).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                 </div>
                 <div className="summary-item section-divider">
-                  <span><strong>Análise de Lucros</strong></span>
+                  <span><strong>Custos Operacionais</strong></span>
                   <span></span>
                 </div>
                 <div className="summary-item expense">
-                  <span>Custos Operacionais</span>
+                  <span>Cupons Admin Usados</span>
                   <span>- {monthlyMetrics.metrics.operationalCosts.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                 </div>
-                <div className="summary-item expense-detail">
-                  <span>&nbsp;&nbsp;• Cupons Admin</span>
-                  <span>- {monthlyMetrics.metrics.totalDiscounts.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                <div className="summary-item section-divider">
+                  <span><strong>Resultado Final</strong></span>
+                  <span></span>
                 </div>
-                <div className="summary-item expense-detail">
-                  <span>&nbsp;&nbsp;• Infraestrutura</span>
-                  <span>- {(monthlyMetrics.metrics.operationalCosts - monthlyMetrics.metrics.totalDiscounts).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                <div className="summary-item">
+                  <span>Receita Bruta</span>
+                  <span>{(monthlyMetrics.metrics.serviceFees + monthlyMetrics.metrics.premiumSubscriptions).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                </div>
+                <div className="summary-item expense">
+                  <span>(-) Cupons Admin</span>
+                  <span>- {monthlyMetrics.metrics.operationalCosts.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                </div>
+                <div className="summary-item total">
+                  <span><strong>Lucro Líquido</strong></span>
+                  <span><strong>{monthlyMetrics.metrics.netProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></span>
+                </div>
+                <div className="summary-item">
+                  <span>Margem de Lucro</span>
+                  <span>{monthlyMetrics.metrics.profitMargin.toFixed(1)}%</span>
                 </div>
                 <div className="summary-item">
                   <span>Custo por Pedido</span>
@@ -1076,10 +1194,6 @@ const Finance = () => {
                 <div className="summary-item">
                   <span>Receita por Parceiro</span>
                   <span>{monthlyMetrics.metrics.averageRevenuePerPartner.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                </div>
-                <div className="summary-item total">
-                  <span>Lucro Líquido</span>
-                  <span>{monthlyMetrics.metrics.netProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                 </div>
               </div>
             </div>
