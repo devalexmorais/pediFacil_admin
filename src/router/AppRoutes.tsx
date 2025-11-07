@@ -15,6 +15,7 @@ import UserDetails from '../pages/UserDetails';
 import Coupons from '../pages/Coupons';
 import CityDistricts from '../pages/CityDistricts';
 import CommunicationCenter from '../pages/CommunicationCenter';
+import PlatformFees from '../pages/PlatformFees';
 
 // Componente para proteger rotas
 const PrivateRoute = ({ children }: { children: JSX.Element }) => {
@@ -106,6 +107,11 @@ const AppRoutes = () => {
       <Route path="/communication-center" element={
         <PrivateRoute>
           <CommunicationCenter />
+        </PrivateRoute>
+      } />
+      <Route path="/platform-fees" element={
+        <PrivateRoute>
+          <PlatformFees />
         </PrivateRoute>
       } />
 

@@ -87,6 +87,12 @@ service cloud.firestore {
       allow delete: if isAuthenticated(); // Só usuários logados podem remover
     }
 
+    // Taxas da plataforma
+    match /platformFees/{configId} {
+      allow read: if true; // Todos podem ler as taxas
+      allow write: if isAuthenticated(); // Apenas usuários autenticados podem escrever
+    }
+
     match /reviews/{reviewId} {
       allow read: if true;
       allow create: if isAuthenticated();

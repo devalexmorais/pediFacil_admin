@@ -1,0 +1,244 @@
+.platform-fees-container {
+  padding: 2rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.platform-fees-header {
+  margin-bottom: 2rem;
+}
+
+.platform-fees-header h1 {
+  font-size: 1.8rem;
+  color: #333;
+  margin-bottom: 0.5rem;
+}
+
+.platform-fees-header .subtitle {
+  color: #666;
+  font-size: 0.95rem;
+}
+
+/* Loading */
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  font-size: 1.2rem;
+  color: #718096;
+}
+
+/* Messages */
+.message {
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+}
+
+.message.success {
+  background-color: #d4edda;
+  color: #155724;
+  border-left: 4px solid #28a745;
+}
+
+.message.error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border-left: 4px solid #dc3545;
+}
+
+/* Info Card */
+.info-card {
+  background: #f8f9fa;
+  color: #333;
+  padding: 1rem;
+  border-radius: 4px;
+  border-left: 4px solid #007bff;
+  margin-bottom: 2rem;
+}
+
+.info-icon {
+  display: none;
+}
+
+.info-text {
+  line-height: 1.5;
+  font-size: 0.9rem;
+}
+
+.info-text strong {
+  font-weight: 600;
+  color: #007bff;
+}
+
+/* Fees Grid */
+.fees-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+/* Fee Card */
+.fee-card {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+}
+
+.fee-card-header {
+  padding: 1rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.fee-card.standard .fee-card-header {
+  background: #f8f9fa;
+}
+
+.fee-card.premium .fee-card-header {
+  background: #fff9e6;
+}
+
+.fee-icon {
+  display: none;
+}
+
+.fee-card-header h2 {
+  color: #333;
+  font-size: 1.1rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+.fee-card-body {
+  padding: 1.5rem;
+}
+
+.fee-description {
+  color: #666;
+  margin-bottom: 1rem;
+  line-height: 1.4;
+  font-size: 0.9rem;
+}
+
+/* Fee Input */
+.fee-input-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.fee-input {
+  flex: 1;
+  padding: 0.5rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.fee-input::placeholder {
+  color: #aaa;
+  font-weight: 400;
+}
+
+.fee-input:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.fee-unit {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.fee-example {
+  background: #f8f9fa;
+  padding: 0.75rem;
+  border-radius: 4px;
+  color: #666;
+  font-size: 0.85rem;
+}
+
+
+/* Actions */
+.actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.btn-primary,
+.btn-secondary {
+  padding: 0.6rem 1.2rem;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  border: none;
+}
+
+.btn-primary {
+  background: #007bff;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #5a6268;
+}
+
+.btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Last Update */
+.last-update {
+  text-align: right;
+  color: #999;
+  font-size: 0.85rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .platform-fees-container {
+    padding: 1rem;
+  }
+
+  .platform-fees-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .fees-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    width: 100%;
+  }
+}
+

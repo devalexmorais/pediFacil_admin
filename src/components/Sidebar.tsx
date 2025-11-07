@@ -70,6 +70,12 @@ const Sidebar = () => {
       label: 'Central de Comunicação', 
       icon: '📢',
       active: location.pathname === '/communication-center'
+    },
+    { 
+      path: '/platform-fees', 
+      label: 'Taxas da Plataforma', 
+      icon: '⚙️',
+      active: location.pathname === '/platform-fees'
     }
   ];
 
