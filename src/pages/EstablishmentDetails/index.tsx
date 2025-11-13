@@ -71,6 +71,26 @@ interface Seller {
   lastUpdated: string;
 }
 
+interface Credit {
+  id: string;
+  amount?: number;
+  available?: number;
+  availableAmount?: number;
+  remainingAmount?: number;
+  remaining?: number;
+  balance?: number;
+  value?: number;
+  usedAmount?: number;
+  used?: number;
+  status?: string;
+  description?: string;
+  title?: string;
+  reason?: string;
+  createdAt?: any;
+  expiresAt?: any;
+  [key: string]: any;
+}
+
 const EstablishmentDetails = () => {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -78,6 +98,8 @@ const EstablishmentDetails = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [credits, setCredits] = useState<Credit[]>([]);
+  const [creditsLoading, setCreditsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -87,6 +109,7 @@ const EstablishmentDetails = () => {
       loadInvoices();
       loadOrders();
       loadProducts();
+      loadCredits();
     }
   }, [id]);
 
@@ -168,6 +191,27 @@ const EstablishmentDetails = () => {
       setProducts(sellerProducts);
     } catch (error) {
       console.error('Erro ao carregar produtos:', error);
+    }
+  };
+
+  const loadCredits = async () => {
+    if (!id) return;
+    try {
+      setCreditsLoading(true);
+      const creditsCollection = collection(db, 'partners', id, 'credits');
+      const querySnapshot = await getDocs(creditsCollection);
+
+      const creditsData: Credit[] = querySnapshot.docs.map((creditDoc) => ({
+        id: creditDoc.id,
+        ...creditDoc.data()
+      })) as Credit[];
+
+      console.log(`Encontrados ${creditsData.length} créditos para o estabelecimento ${id}`);
+      setCredits(creditsData);
+    } catch (error) {
+      console.error('Erro ao carregar créditos:', error);
+    } finally {
+      setCreditsLoading(false);
     }
   };
 
@@ -338,6 +382,80 @@ const EstablishmentDetails = () => {
       default:
         return 'Pendente';
     }
+  };
+
+  const extractAvailableAmount = (credit: Credit): number => {
+    const candidateFields = ['available', 'availableAmount', 'remainingAmount', 'remaining', 'balance', 'value', 'amount'];
+    for (const field of candidateFields) {
+      const fieldValue = credit[field];
+      if (typeof fieldValue === 'number') {
+        if ((field === 'amount' || field === 'value') && typeof credit.usedAmount === 'number') {
+          return Math.max(fieldValue - Number(credit.usedAmount), 0);
+        }
+        if ((field === 'amount' || field === 'value') && typeof credit.used === 'number') {
+          return Math.max(fieldValue - Number(credit.used), 0);
+        }
+        return fieldValue;
+      }
+    }
+    return 0;
+  };
+
+  const totalAvailableCredits = credits.reduce((sum, credit) => sum + extractAvailableAmount(credit), 0);
+
+  const hasAvailableCredits = credits.some((credit) => {
+    const normalizedStatus = (credit.status || '').toString().toLowerCase();
+    const positiveStatuses = ['available', 'disponivel', 'disponível', 'ativo', 'active'];
+    if (positiveStatuses.includes(normalizedStatus)) {
+      return true;
+    }
+    return extractAvailableAmount(credit) > 0;
+  });
+
+  const getCreditStatusClass = (status?: string) => {
+    const normalized = (status || '').toString().toLowerCase();
+    if (['available', 'disponivel', 'disponível', 'ativo', 'active'].includes(normalized)) {
+      return 'available';
+    }
+    if (['pending', 'pendente', 'aguardando'].includes(normalized)) {
+      return 'pending';
+    }
+    if (['used', 'utilizado', 'consumido'].includes(normalized)) {
+      return 'used';
+    }
+    if (['expired', 'expirado', 'inativo', 'inactive', 'indisponivel', 'indisponível'].includes(normalized)) {
+      return 'expired';
+    }
+    return 'undefined';
+  };
+
+  const getCreditStatusLabel = (status?: string) => {
+    if (!status) return 'Indefinido';
+    const normalized = status.toString().toLowerCase();
+    const labelMap: Record<string, string> = {
+      available: 'Disponível',
+      'disponivel': 'Disponível',
+      'disponível': 'Disponível',
+      active: 'Disponível',
+      ativo: 'Disponível',
+      pending: 'Pendente',
+      pendente: 'Pendente',
+      aguardando: 'Pendente',
+      used: 'Utilizado',
+      utilizado: 'Utilizado',
+      consumido: 'Utilizado',
+      expired: 'Expirado',
+      expirado: 'Expirado',
+      inativo: 'Indisponível',
+      inactive: 'Indisponível',
+      indisponivel: 'Indisponível',
+      'indisponível': 'Indisponível'
+    };
+    return labelMap[normalized] || status;
+  };
+
+  const getCreditDescription = (credit: Credit) => {
+    return credit.description || credit.title || credit.reason || 'Sem descrição';
   };
 
   // Função helper para obter o valor total do pedido
@@ -591,7 +709,72 @@ const EstablishmentDetails = () => {
               <span className="label">Tipo de Conta</span>
               <span className="value">{establishment.store.isPremium ? 'Premium' : 'Básica'}</span>
             </div>
+            <div className="info-item">
+              <span className="label">Créditos Disponíveis</span>
+              <span className={`value ${hasAvailableCredits ? 'value-positive' : 'value-negative'}`}>
+                {hasAvailableCredits ? 'Sim' : 'Não'}
+              </span>
+            </div>
           </div>
+        </section>
+
+        <section className="info-section">
+          <h2>Créditos</h2>
+          {creditsLoading ? (
+            <p className="credits-message">Carregando créditos...</p>
+          ) : credits.length === 0 ? (
+            <p className="credits-message">Nenhum crédito encontrado para este estabelecimento.</p>
+          ) : (
+            <div className="credits-summary">
+              <span className={`credits-badge ${hasAvailableCredits ? 'available' : 'empty'}`}>
+                {hasAvailableCredits ? 'Créditos disponíveis' : 'Sem créditos disponíveis'}
+              </span>
+
+              <div className="credits-stats">
+                <div className="credit-stat">
+                  <span className="credit-label">Total disponível</span>
+                  <span className="credit-value">{formatCurrency(totalAvailableCredits)}</span>
+                </div>
+                <div className="credit-stat">
+                  <span className="credit-label">Quantidade de registros</span>
+                  <span className="credit-value">{credits.length}</span>
+                </div>
+              </div>
+
+              <div className="credits-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Descrição</th>
+                      <th>Disponível</th>
+                      <th>Status</th>
+                      <th>Criado em</th>
+                      <th>Expira em</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {credits.map((credit) => {
+                      const availableAmount = extractAvailableAmount(credit);
+                      const statusClass = getCreditStatusClass(credit.status);
+                      return (
+                        <tr key={credit.id}>
+                          <td>{getCreditDescription(credit)}</td>
+                          <td>{formatCurrency(availableAmount)}</td>
+                          <td>
+                            <span className={`credit-status-badge ${statusClass}`}>
+                              {getCreditStatusLabel(credit.status)}
+                            </span>
+                          </td>
+                          <td>{credit.createdAt ? formatDate(credit.createdAt) : 'Não informado'}</td>
+                          <td>{credit.expiresAt ? formatDate(credit.expiresAt) : 'Sem validade'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </section>
 
         <section className="info-section">

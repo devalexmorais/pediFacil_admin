@@ -43,6 +43,119 @@ interface ChartDataItem {
   valor: number;
 }
 
+const extractCreditValue = (creditData: Record<string, any>): number => {
+  if (!creditData || typeof creditData !== 'object') {
+    return 0;
+  }
+
+  const candidateFields = [
+    'available',
+    'availableAmount',
+    'remaining',
+    'remainingAmount',
+    'balance',
+    'value',
+    'amount',
+    'credit',
+    'credits'
+  ];
+
+  for (const field of candidateFields) {
+    const fieldValue = creditData[field];
+    if (fieldValue === undefined || fieldValue === null) {
+      continue;
+    }
+
+    const numericValue = Number(fieldValue);
+    if (!Number.isNaN(numericValue)) {
+      if ((field === 'value' || field === 'amount') && typeof creditData.usedAmount === 'number') {
+        return Math.max(numericValue - Number(creditData.usedAmount), 0);
+      }
+
+      if ((field === 'value' || field === 'amount') && typeof creditData.used === 'number') {
+        return Math.max(numericValue - Number(creditData.used), 0);
+      }
+
+      return numericValue;
+    }
+  }
+
+  return 0;
+};
+
+const extractCreditDate = (creditData: Record<string, any>): Date | null => {
+  if (!creditData || typeof creditData !== 'object') {
+    return null;
+  }
+
+  const candidateFields = [
+    'createdAt',
+    'created_at',
+    'timestamp',
+    'date',
+    'issuedAt',
+    'issued_at',
+    'createdTime',
+    'createdOn',
+    'created_on'
+  ];
+
+  const parseValueAsDate = (value: any): Date | null => {
+    if (!value) {
+      return null;
+    }
+
+    if (value instanceof Timestamp) {
+      return value.toDate();
+    }
+
+    if (typeof value === 'object') {
+      if (typeof value.toDate === 'function') {
+        try {
+          return value.toDate();
+        } catch {
+          // ignore and fallback to other checks
+        }
+      }
+
+      if (typeof value.seconds === 'number') {
+        return new Date(value.seconds * 1000);
+      }
+    }
+
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      // Detect if value is in seconds (10 digits) or milliseconds (13 digits)
+      const timestamp = value < 1e12 ? value * 1000 : value;
+      const date = new Date(timestamp);
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    if (typeof value === 'string') {
+      const parsed = new Date(value);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    return null;
+  };
+
+  for (const field of candidateFields) {
+    const fieldValue = creditData[field];
+    const parsed = parseValueAsDate(fieldValue);
+    if (parsed) {
+      return parsed;
+    }
+  }
+
+  // Tentar diretamente propriedades comuns (por exemplo, creditData.createdAt.seconds)
+  const nestedCreatedAt = creditData.createdAt || creditData.created_at;
+  const nestedParsed = parseValueAsDate(nestedCreatedAt);
+  if (nestedParsed) {
+    return nestedParsed;
+  }
+
+  return null;
+};
+
 const Finance = () => {
   const [availableMonths, setAvailableMonths] = useState<MonthOption[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
@@ -105,9 +218,26 @@ const Finance = () => {
         return getDocs(ordersRef);
       });
 
-      const [ordersSnapshots, appFeesSnapshot] = await Promise.all([
+      const creditsPromises = partnersSnapshot.docs.map(async partnerDoc => {
+        const creditsSnapshot = await getDocs(collection(partnerDoc.ref, 'credits'));
+        let partnerTotal = 0;
+        creditsSnapshot.forEach(creditDoc => {
+          const creditData = creditDoc.data();
+          const creditDate = extractCreditDate(creditData);
+          if (!creditDate) {
+            return;
+          }
+          if (creditDate >= prevStartDate && creditDate <= prevEndDate) {
+            partnerTotal += extractCreditValue(creditData);
+          }
+        });
+        return partnerTotal;
+      });
+
+      const [ordersSnapshots, appFeesSnapshot, partnerCreditsTotals] = await Promise.all([
         Promise.all(ordersPromises),
-        getDocs(query(collectionGroup(db, 'app_fees')))
+        getDocs(query(collectionGroup(db, 'app_fees'))),
+        Promise.all(creditsPromises)
       ]);
 
       // Filtrar pedidos do mês anterior
@@ -299,15 +429,10 @@ const Finance = () => {
       const prevGrossRevenue = prevServiceFees + prevPremiumRevenue;
 
       // Calcular créditos totais dos estabelecimentos (apenas para info)
-      let prevTotalCredits = 0;
-      partnersSnapshot.docs.forEach(doc => {
-        const partnerData = doc.data();
-        const credits = partnerData.credits || 0;
-        prevTotalCredits += credits;
-      });
+      const prevTotalCredits = partnerCreditsTotals.reduce((sum, partnerTotal) => sum + partnerTotal, 0);
       
-      // Custos operacionais = cupons admin usados
-      const prevOperationalCosts = prevAdminCouponsDiscounts;
+      // Custos operacionais = total de créditos concedidos
+      const prevOperationalCosts = prevTotalCredits;
       const prevNetProfit = prevGrossRevenue - prevOperationalCosts;
       const prevPlatformRevenue = prevGrossRevenue - prevAdminCouponsDiscounts;
 
@@ -464,9 +589,26 @@ const Finance = () => {
         const adminCoupons = new Set(couponsSnapshot.docs.map(doc => doc.data().code));
 
         // Buscar pedidos, taxas e parceiros
-        const [ordersSnapshots, appFeesSnapshot] = await Promise.all([
+        const creditsPromises = partnersSnapshot.docs.map(async partnerDoc => {
+          const creditsSnapshot = await getDocs(collection(partnerDoc.ref, 'credits'));
+          let partnerTotal = 0;
+          creditsSnapshot.forEach(creditDoc => {
+            const creditData = creditDoc.data();
+            const creditDate = extractCreditDate(creditData);
+            if (!creditDate) {
+              return;
+            }
+            if (creditDate >= startDate && creditDate <= endDate) {
+              partnerTotal += extractCreditValue(creditData);
+            }
+          });
+          return partnerTotal;
+        });
+
+        const [ordersSnapshots, appFeesSnapshot, partnerCreditsTotals] = await Promise.all([
           Promise.all(ordersPromises),
-          getDocs(query(collectionGroup(db, 'app_fees')))
+          getDocs(query(collectionGroup(db, 'app_fees'))),
+          Promise.all(creditsPromises)
         ]);
         
         // Debug: verificar quantas taxas foram encontradas
@@ -821,21 +963,16 @@ const Finance = () => {
         const averageTicket = filteredOrders.length > 0 ? totalSales / filteredOrders.length : 0;
         
         // Calcular créditos dos estabelecimentos (apenas para informação)
-        let totalCredits = 0;
-        partnersSnapshot.docs.forEach(doc => {
-          const partnerData = doc.data();
-          const credits = partnerData.credits || 0;
-          totalCredits += credits;
-        });
+        const totalCredits = partnerCreditsTotals.reduce((sum, partnerTotal) => sum + partnerTotal, 0);
         
-        // Custos operacionais = cupons admin usados
-        const operationalCosts = adminCouponsDiscounts;
+        // Custos operacionais = soma dos créditos concedidos aos parceiros
+        const operationalCosts = totalCredits;
         
         console.log(`==========================================`);
         console.log(`VERIFICAÇÃO DE CUSTOS:`);
-        console.log(`adminCouponsDiscounts: R$ ${adminCouponsDiscounts.toFixed(2)}`);
-        console.log(`operationalCosts: R$ ${operationalCosts.toFixed(2)}`);
-        console.log(`Créditos dos estabelecimentos (info): R$ ${totalCredits.toFixed(2)}`);
+        console.log(`Total de créditos concedidos (partners/*/credits): R$ ${totalCredits.toFixed(2)}`);
+        console.log(`Cupons admin no período (informativo): R$ ${adminCouponsDiscounts.toFixed(2)}`);
+        console.log(`operationalCosts (usando créditos): R$ ${operationalCosts.toFixed(2)}`);
         console.log(`==========================================`);
         
         // Calcular lucro líquido = Receita Bruta - Custos Operacionais

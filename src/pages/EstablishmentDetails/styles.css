@@ -130,6 +130,14 @@
   font-weight: 500;
 }
 
+.value.value-positive {
+  color: #155724;
+}
+
+.value.value-negative {
+  color: #721c24;
+}
+
 .schedule-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -1099,6 +1107,131 @@
   background-color: white;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.credits-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.credits-badge {
+  align-self: flex-start;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.credits-badge.available {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.credits-badge.empty {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.credits-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.credit-stat {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 16px;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.credit-label {
+  color: #666;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.credit-value {
+  color: #2c3e50;
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+
+.credits-table {
+  overflow-x: auto;
+}
+
+.credits-table table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.credits-table th,
+.credits-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.credits-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #495057;
+}
+
+.credits-table tr:last-child td {
+  border-bottom: none;
+}
+
+.credit-status-badge {
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.credit-status-badge.available {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.credit-status-badge.pending {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.credit-status-badge.used {
+  background-color: #d1ecf1;
+  color: #0c5460;
+}
+
+.credit-status-badge.expired {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.credit-status-badge.undefined {
+  background-color: #e2e3e5;
+  color: #6c757d;
+}
+
+.credits-message {
+  text-align: center;
+  color: #6c757d;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
 }
 
 .billing-init-container {
