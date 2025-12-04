@@ -123,3 +123,107 @@ export const getImageInfo = (file: File): Promise<{
     img.src = URL.createObjectURL(file);
   });
 };
+
+/**
+ * Função auxiliar para converter imagem para WEBP
+ * Redimensiona para máximo 800x800 mantendo proporção e comprime para WEBP
+ */
+export const convertToWebP = async (file: File | string): Promise<File> => {
+  try {
+    let originalSize: number;
+    let imageFile: File | null = null;
+
+    // Se for string (URI/URL), converter para File primeiro
+    if (typeof file === 'string') {
+      // Se for uma URL/URI, fazer fetch para obter o blob
+      const response = await fetch(file);
+      const blob = await response.blob();
+      originalSize = blob.size;
+      imageFile = new File([blob], 'image.jpg', { type: blob.type });
+    } else {
+      imageFile = file;
+      originalSize = file.size;
+    }
+
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          if (!ctx) {
+            reject(new Error('Não foi possível criar o contexto do canvas'));
+            return;
+          }
+
+          // Redimensionar para máximo 800x800 mantendo proporção
+          let { width, height } = img;
+          const maxDimension = 800;
+          
+          if (width > maxDimension || height > maxDimension) {
+            const ratio = Math.min(maxDimension / width, maxDimension / height);
+            width = width * ratio;
+            height = height * ratio;
+          }
+
+          // Configurar canvas
+          canvas.width = width;
+          canvas.height = height;
+
+          // Desenhar imagem redimensionada
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Converter para WEBP com compressão de 60%
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                reject(new Error('Falha ao converter imagem para WEBP'));
+                return;
+              }
+
+              const newSize = blob.size;
+              const sizeMB = newSize / (1024 * 1024);
+              const reduction = ((originalSize - newSize) / originalSize * 100).toFixed(1);
+
+              console.log(`Imagem convertida para WEBP: ${sizeMB.toFixed(2)}MB (${reduction}% de redução)`);
+
+              // Criar novo arquivo com extensão .webp
+              const webpFile = new File([blob], 'image.webp', {
+                type: 'image/webp',
+                lastModified: Date.now()
+              });
+
+              resolve(webpFile);
+            },
+            'image/webp',
+            0.6 // Compressão de 60% para WEBP
+          );
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      img.onerror = () => {
+        reject(new Error('Erro ao carregar imagem'));
+      };
+
+      // Carregar imagem
+      if (typeof file === 'string') {
+        // Se for URL, usar diretamente
+        img.src = file;
+      } else if (imageFile) {
+        // Se for File, criar URL do objeto
+        img.src = URL.createObjectURL(imageFile);
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao converter imagem para WEBP:', error);
+    // Se falhar e for File, retorna o arquivo original
+    if (typeof file === 'string') {
+      throw error;
+    }
+    return file;
+  }
+};

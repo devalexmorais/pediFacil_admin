@@ -15,6 +15,7 @@ import {
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '../config/firebase';
 import { serverTimestamp } from 'firebase/firestore';
+import { convertToWebP } from '../utils/imageCompression';
 
 export interface Advertisement {
   id: string;
@@ -50,12 +51,19 @@ export const createAdvertisement = async (advertisementData: {
   try {
     console.log('Iniciando upload do advertisement...');
     
-    // 1. Gera caminho único para a imagem
-    const storagePath = `advertisements/${Date.now()}_${advertisementData.image.name}`;
+    // Converter para WEBP antes do upload
+    const webpFile = await convertToWebP(advertisementData.image);
+    
+    // Log do tamanho final para monitoramento
+    const sizeMB = webpFile.size / (1024 * 1024);
+    console.log(`Tamanho final da imagem WEBP: ${sizeMB.toFixed(2)}MB`);
+    
+    // 1. Gera caminho único para a imagem (agora .webp)
+    const storagePath = `advertisements/${Date.now()}_advertisement.webp`;
     const storageRef = ref(storage, storagePath);
     
     // 2. Faz upload da imagem
-    const uploadTask = await uploadBytes(storageRef, advertisementData.image);
+    const uploadTask = await uploadBytes(storageRef, webpFile);
     console.log('Upload realizado com sucesso:', uploadTask);
     
     // 3. Obtém URL pública
@@ -128,10 +136,17 @@ export const updateAdvertisement = async (
         const currentData = currentDoc.data();
         const oldImageUrl = currentData.image;
 
-        // Faz upload da nova imagem
-        const storagePath = `advertisements/${Date.now()}_${updateData.image.name}`;
+        // Converter para WEBP antes do upload
+        const webpFile = await convertToWebP(updateData.image);
+        
+        // Log do tamanho final para monitoramento
+        const sizeMB = webpFile.size / (1024 * 1024);
+        console.log(`Tamanho final da imagem WEBP: ${sizeMB.toFixed(2)}MB`);
+
+        // Faz upload da nova imagem (agora .webp)
+        const storagePath = `advertisements/${Date.now()}_advertisement.webp`;
         const storageRef = ref(storage, storagePath);
-        const uploadTask = await uploadBytes(storageRef, updateData.image);
+        const uploadTask = await uploadBytes(storageRef, webpFile);
         const newImageUrl = await getDownloadURL(uploadTask.ref);
         
         updateFields.image = newImageUrl;

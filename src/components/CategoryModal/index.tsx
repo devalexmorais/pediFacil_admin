@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../config/firebase';
 import { getAuth } from 'firebase/auth';
-import imageCompression from 'browser-image-compression';
+import { convertToWebP } from '../../utils/imageCompression';
 import './styles.css';
 
 interface Category {
@@ -27,7 +27,6 @@ const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose, onSave, 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [compressionProgress, setCompressionProgress] = useState<number>(0);
 
   useEffect(() => {
     if (categoryToEdit) {
@@ -44,64 +43,19 @@ const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose, onSave, 
       setSelectedFile(null);
     }
     setUploadError(null);
-    setCompressionProgress(0);
   }, [categoryToEdit]);
 
-  const convertToPng = (file: File): Promise<File> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Não foi possível criar o contexto do canvas'));
-          return;
-        }
-        
-        ctx.drawImage(img, 0, 0);
-        
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const newFile = new File([blob], 'image.png', { type: 'image/png' });
-            resolve(newFile);
-          } else {
-            reject(new Error('Não foi possível converter a imagem'));
-          }
-        }, 'image/png');
-      };
-      
-      img.onerror = () => reject(new Error('Erro ao carregar a imagem'));
-      img.src = URL.createObjectURL(file);
-    });
-  };
-
-  const compressImage = async (file: File): Promise<File> => {
-    const options = {
-      maxSizeMB: 1,
-      maxWidthOrHeight: 800,
-      useWebWorker: true,
-      onProgress: (progress: number) => {
-        setCompressionProgress(Math.round(progress));
-      }
-    };
-
+  const processImage = async (file: File): Promise<File> => {
     try {
-      console.log('Iniciando compressão da imagem...');
+      console.log('Iniciando conversão da imagem para WEBP...');
       console.log('Tamanho original:', (file.size / 1024 / 1024).toFixed(2), 'MB');
       
-      const compressedFile = await imageCompression(file, options);
-      console.log('Compressão concluída!');
-      console.log('Tamanho após compressão:', (compressedFile.size / 1024 / 1024).toFixed(2), 'MB');
+      // Converter para WEBP (já inclui redimensionamento e compressão)
+      const webpFile = await convertToWebP(file);
+      console.log('Conversão para WEBP concluída!');
+      console.log('Tamanho após conversão:', (webpFile.size / 1024 / 1024).toFixed(2), 'MB');
       
-      // Converter para PNG após a compressão
-      console.log('Convertendo para PNG...');
-      const pngFile = await convertToPng(compressedFile);
-      console.log('Conversão para PNG concluída!');
-      
-      return pngFile;
+      return webpFile;
     } catch (error: any) {
       console.error('Erro no processamento da imagem:', error);
       throw new Error('Erro ao processar imagem: ' + error.message);
@@ -134,19 +88,20 @@ const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose, onSave, 
 
       if (selectedFile) {
         try {
-          const processedFile = await compressImage(selectedFile);
+          // Converter para WEBP antes do upload
+          const webpFile = await processImage(selectedFile);
           const timestamp = Date.now();
-          const fileName = `${timestamp}_category.png`;
+          const fileName = `${timestamp}_category.webp`;
           const storageRef = ref(storage, `categories/${fileName}`);
           
           console.log('Iniciando upload...', {
             fileName,
-            fileSize: processedFile.size,
-            fileType: processedFile.type,
+            fileSize: webpFile.size,
+            fileType: webpFile.type,
             storagePath: `categories/${fileName}`
           });
 
-          const uploadResult = await uploadBytes(storageRef, processedFile);
+          const uploadResult = await uploadBytes(storageRef, webpFile);
           console.log('Upload concluído:', uploadResult);
           
           imageUrl = await getDownloadURL(uploadResult.ref);
@@ -180,7 +135,6 @@ const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose, onSave, 
       setUploadError(error.message || 'Erro ao salvar categoria');
     } finally {
       setIsLoading(false);
-      setCompressionProgress(0);
     }
   };
 
@@ -194,7 +148,6 @@ const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose, onSave, 
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     setUploadError(null);
-    setCompressionProgress(0);
     
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -262,13 +215,10 @@ const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose, onSave, 
             {formData.imagePreview && (
               <div className="image-preview">
                 <img src={formData.imagePreview} alt="Preview" />
-                {compressionProgress > 0 && compressionProgress < 100 && (
+                {isLoading && (
                   <div className="compression-progress">
-                    <div 
-                      className="progress-bar" 
-                      style={{ width: `${compressionProgress}%` }}
-                    />
-                    <span>Comprimindo: {compressionProgress}%</span>
+                    <div className="progress-bar" />
+                    <span>Convertendo para WEBP...</span>
                   </div>
                 )}
               </div>

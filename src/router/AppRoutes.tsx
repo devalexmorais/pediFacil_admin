@@ -1,124 +1,191 @@
-import { Route, Routes, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/Layout';
+
+// Páginas
 import Login from '../pages/Login';
 import Home from '../pages/Home';
 import Establishment from '../pages/Establishment';
 import EstablishmentDetails from '../pages/EstablishmentDetails';
 import Users from '../pages/Users';
+import UserDetails from '../pages/UserDetails';
 import Cities from '../pages/Cities';
 import Banners from '../pages/Banners';
 import Advertisements from '../pages/Advertisements';
 import Categories from '../pages/Categories';
 import Finance from '../pages/Finance';
-import UserDetails from '../pages/UserDetails';
 import Coupons from '../pages/Coupons';
-import CityDistricts from '../pages/CityDistricts';
 import CommunicationCenter from '../pages/CommunicationCenter';
 import PlatformFees from '../pages/PlatformFees';
+import OrderReports from '../pages/OrderReports';
 
-// Componente para proteger rotas
-const PrivateRoute = ({ children }: { children: JSX.Element }) => {
+// Componente de rota protegida
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" replace />;
   }
 
   return <Layout>{children}</Layout>;
 };
 
-const AppRoutes = () => {
+// Componente de rota pública (redireciona se autenticado)
+const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated } = useAuth();
 
+  if (isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+const AppRoutes = () => {
   return (
     <Routes>
-      <Route 
-        path="/login" 
-        element={isAuthenticated ? <Navigate to="/" /> : <Login />} 
+      {/* Rota pública - Login */}
+      <Route
+        path="/login"
+        element={
+          <PublicRoute>
+            <Login />
+          </PublicRoute>
+        }
       />
-      
-      {/* Rotas protegidas */}
-      <Route path="/" element={
-        <PrivateRoute>
-          <Home />
-        </PrivateRoute>
-      } />
-      <Route path="/establishment" element={
-        <PrivateRoute>
-          <Establishment />
-        </PrivateRoute>
-      } />
-      <Route path="/establishment/:id" element={
-        <PrivateRoute>
-          <EstablishmentDetails />
-        </PrivateRoute>
-      } />
-      <Route path="/users" element={
-        <PrivateRoute>
-          <Users />
-        </PrivateRoute>
-      } />
-      <Route path="/users/:id" element={
-        <PrivateRoute>
-          <UserDetails />
-        </PrivateRoute>
-      } />
-      <Route path="/Cities" element={
-        <PrivateRoute>
-          <Cities />
-        </PrivateRoute>
-      } />
-      <Route path="/Banners" element={
-        <PrivateRoute>
-          <Banners />
-        </PrivateRoute>
-      } />
-      <Route path="/Advertisements" element={
-        <PrivateRoute>
-          <Advertisements />
-        </PrivateRoute>
-      } />
-      <Route path="/Categories" element={
-        <PrivateRoute>
-          <Categories />
-        </PrivateRoute>
-      } />
-      <Route path="/Finance" element={
-        <PrivateRoute>
-          <Finance />
-        </PrivateRoute>
-      } />
-      <Route path="/Coupons" element={
-        <PrivateRoute>
-          <Coupons />
-        </PrivateRoute>
-      } />
-      <Route path="/cities" element={
-        <PrivateRoute>
-          <Cities />
-        </PrivateRoute>
-      } />
-      <Route path="/cities/:cityId/districts" element={
-        <PrivateRoute>
-          <CityDistricts />
-        </PrivateRoute>
-      } />
-      <Route path="/communication-center" element={
-        <PrivateRoute>
-          <CommunicationCenter />
-        </PrivateRoute>
-      } />
-      <Route path="/platform-fees" element={
-        <PrivateRoute>
-          <PlatformFees />
-        </PrivateRoute>
-      } />
 
-      {/* Redireciona qualquer rota não encontrada para o login */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      {/* Rotas protegidas */}
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <Home />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/establishment"
+        element={
+          <ProtectedRoute>
+            <Establishment />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/establishment/:id"
+        element={
+          <ProtectedRoute>
+            <EstablishmentDetails />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/users"
+        element={
+          <ProtectedRoute>
+            <Users />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/users/:id"
+        element={
+          <ProtectedRoute>
+            <UserDetails />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/Cities"
+        element={
+          <ProtectedRoute>
+            <Cities />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/Banners"
+        element={
+          <ProtectedRoute>
+            <Banners />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/Advertisements"
+        element={
+          <ProtectedRoute>
+            <Advertisements />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/Categories"
+        element={
+          <ProtectedRoute>
+            <Categories />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/Finance"
+        element={
+          <ProtectedRoute>
+            <Finance />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/Coupons"
+        element={
+          <ProtectedRoute>
+            <Coupons />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/communication-center"
+        element={
+          <ProtectedRoute>
+            <CommunicationCenter />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/platform-fees"
+        element={
+          <ProtectedRoute>
+            <PlatformFees />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/order-reports"
+        element={
+          <ProtectedRoute>
+            <OrderReports />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Rota padrão - redireciona para home */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 };
 
-export default AppRoutes; 
+export default AppRoutes;
+

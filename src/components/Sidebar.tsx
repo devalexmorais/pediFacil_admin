@@ -1,14 +1,32 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import './Sidebar.css';
 
 const Sidebar = () => {
   const location = useLocation();
   const { logout, user } = useAuth();
+  const [pendingReportsCount, setPendingReportsCount] = useState(0);
 
   const handleLogout = () => {
     logout();
   };
+
+  useEffect(() => {
+    // Buscar quantidade de relatórios pendentes em tempo real
+    const reportsRef = collection(db, 'order_reports');
+    const pendingQuery = query(reportsRef, where('status', '==', 'pending'));
+    
+    const unsubscribe = onSnapshot(pendingQuery, (snapshot) => {
+      setPendingReportsCount(snapshot.size);
+    }, (error) => {
+      console.error('Erro ao buscar relatórios pendentes:', error);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const menuItems = [
     { 
@@ -76,6 +94,13 @@ const Sidebar = () => {
       label: 'Taxas da Plataforma', 
       icon: '⚙️',
       active: location.pathname === '/platform-fees'
+    },
+    { 
+      path: '/order-reports', 
+      label: 'Relatórios de Pedidos', 
+      icon: '📋',
+      active: location.pathname === '/order-reports',
+      badge: pendingReportsCount > 0 ? pendingReportsCount : undefined
     }
   ];
 
@@ -102,6 +127,9 @@ const Sidebar = () => {
           >
             <span className="nav-icon">{item.icon}</span>
             <span className="nav-text">{item.label}</span>
+            {item.badge !== undefined && item.badge > 0 && (
+              <span className="nav-badge">{item.badge}</span>
+            )}
           </Link>
         ))}
       </nav>

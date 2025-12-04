@@ -8,7 +8,6 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { auth } from '../config/firebase';
-import { getUserById } from './userServices';
 
 export interface Seller {
   id: string;
@@ -127,7 +126,7 @@ export const getAllSellers = async (): Promise<Seller[]> => {
         isOpen: finalIsOpen,
         status: data.status || 'pending',
         role: data.role || 'partner',
-        createdAt: data.createdAt,
+        createdAt: data.createdAt || Timestamp.now(),
         lastUpdated: data.lastUpdated || ''
       };
     });
@@ -191,15 +190,15 @@ export const getSellerById = async (id: string): Promise<Seller | null> => {
         analytics: data.premiumFeatures?.analytics || false,
         prioritySupport: data.premiumFeatures?.prioritySupport || false
       },
-      isActive: data.isActive || false,
-      isOpen: finalIsOpen,
-      status: data.status || 'pending',
-      role: data.role || 'partner',
-      createdAt: data.createdAt,
-      lastUpdated: data.lastUpdated || ''
-    };
-  } catch (error) {
-    console.error('Erro ao buscar estabelecimento:', error);
+        isActive: data.isActive || false,
+        isOpen: finalIsOpen,
+        status: data.status || 'pending',
+        role: data.role || 'partner',
+        createdAt: data.createdAt || Timestamp.now(),
+        lastUpdated: data.lastUpdated || ''
+      };
+    } catch (error) {
+      console.error('Erro ao buscar estabelecimento:', error);
     throw error;
   }
 };
@@ -215,25 +214,39 @@ export const toggleSellerBlock = async (sellerId: string, currentStatus: boolean
 
     console.log('ID do usuário atual:', currentUser.uid);
 
-    // Verifica se o usuário é admin
-    const userDoc = await getUserById(currentUser.uid);
-    console.log('Dados do usuário:', JSON.stringify(userDoc, null, 2));
+    // Verifica se o usuário é admin na coleção admin
+    const adminDoc = await getDoc(doc(db, 'admin', currentUser.uid));
+    console.log('Dados do admin:', JSON.stringify(adminDoc.data(), null, 2));
 
-    if (!userDoc) {
-      console.error('Documento do usuário não encontrado');
-      throw new Error('Permissão negada: usuário não encontrado');
+    if (!adminDoc.exists()) {
+      console.error('Documento do admin não encontrado');
+      throw new Error('Permissão negada: admin não encontrado');
     }
 
-    if (userDoc.role !== 'ADMIN') {
-      console.error('Usuário não é admin. Role atual:', userDoc.role);
+    const adminData = adminDoc.data();
+    if (adminData.role !== 'ADMIN') {
+      console.error('Usuário não é admin. Role atual:', adminData.role);
       throw new Error('Permissão negada: apenas administradores podem realizar esta ação');
     }
 
     const sellerRef = doc(db, 'partners', sellerId);
-    await updateDoc(sellerRef, {
-      isActive: !currentStatus,
+    const newIsActive = !currentStatus;
+    
+    const updateData: any = {
+      isActive: newIsActive,
       lastUpdated: new Date().toISOString()
-    });
+    };
+
+    // Se estiver bloqueando o estabelecimento (newIsActive = false), também fecha o estabelecimento
+    if (!newIsActive) {
+      updateData.isOpen = false;
+      console.log('Bloqueando estabelecimento - definindo isOpen como false');
+    }
+
+    console.log('Dados que serão atualizados:', updateData);
+    console.log('Status atual:', currentStatus, '-> Novo isActive:', newIsActive);
+
+    await updateDoc(sellerRef, updateData);
   } catch (error) {
     console.error('Erro ao alterar status do estabelecimento:', error);
     throw error;

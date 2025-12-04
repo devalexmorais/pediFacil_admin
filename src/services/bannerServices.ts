@@ -4,6 +4,7 @@ import {
   getDoc, 
   getDocs, 
   addDoc, 
+  updateDoc,
   deleteDoc,
   query,
   orderBy,
@@ -14,7 +15,7 @@ import {
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '../config/firebase';
 import { serverTimestamp } from 'firebase/firestore';
-import { compressImage, shouldCompressImage, getImageInfo } from '../utils/imageCompression';
+import { convertToWebP } from '../utils/imageCompression';
 
 export interface Banner {
   id: string;
@@ -51,36 +52,21 @@ export const createBanner = async (bannerData: {
   image: File;
 }) => {
   try {
-    console.log('Iniciando upload...');
+    console.log('Iniciando upload do banner...');
     
-    // Obter informações da imagem original
-    const originalInfo = await getImageInfo(bannerData.image);
-    console.log('Informações da imagem original:', originalInfo);
+    // Converter para WEBP antes do upload
+    const webpFile = await convertToWebP(bannerData.image);
     
-    // Verificar se precisa comprimir
-    let imageToUpload = bannerData.image;
-    if (shouldCompressImage(bannerData.image)) {
-      console.log('Comprimindo imagem...');
-      imageToUpload = await compressImage(bannerData.image, {
-        maxWidth: 1200,
-        maxHeight: 800,
-        quality: 0.8,
-        maxSizeKB: 500
-      });
-      
-      const compressedInfo = await getImageInfo(imageToUpload);
-      console.log('Informações da imagem comprimida:', compressedInfo);
-      console.log(`Redução de tamanho: ${((originalInfo.sizeKB - compressedInfo.sizeKB) / originalInfo.sizeKB * 100).toFixed(1)}%`);
-    } else {
-      console.log('Imagem não precisa ser comprimida');
-    }
+    // Log do tamanho final para monitoramento
+    const sizeMB = webpFile.size / (1024 * 1024);
+    console.log(`Tamanho final da imagem WEBP: ${sizeMB.toFixed(2)}MB`);
     
-    // 1. Gera caminho único para a imagem
-    const storagePath = `banners/${Date.now()}_${imageToUpload.name}`;
+    // 1. Gera caminho único para a imagem (agora .webp)
+    const storagePath = `banners/${Date.now()}_banner.webp`;
     const storageRef = ref(storage, storagePath);
     
     // 2. Faz upload da imagem
-    const uploadTask = await uploadBytes(storageRef, imageToUpload);
+    const uploadTask = await uploadBytes(storageRef, webpFile);
     console.log('Upload realizado com sucesso:', uploadTask);
     
     // 3. Obtém URL pública
@@ -129,6 +115,88 @@ export const getAllBanners = async (): Promise<Banner[]> => {
   } catch (error: any) {
     console.error('Erro ao buscar banners:', error);
     throw new Error(`Erro ao carregar banners: ${error.message}`);
+  }
+};
+
+export const updateBanner = async (
+  bannerId: string, 
+  updateData: {
+    title?: string;
+    subcategoryId?: string;
+    image?: File;
+    isActive?: boolean;
+  }
+): Promise<void> => {
+  try {
+    console.log('Iniciando atualização do banner:', bannerId);
+    
+    const bannerRef = doc(db, 'banners', bannerId);
+    const updateFields: any = {
+      updatedAt: serverTimestamp()
+    };
+
+    // Se há uma nova imagem, faz upload
+    if (updateData.image) {
+      // Primeiro, busca o banner atual para obter a URL da imagem antiga
+      const currentDoc = await getDoc(bannerRef);
+      if (currentDoc.exists()) {
+        const currentData = currentDoc.data();
+        const oldImageUrl = currentData.image;
+
+        // Converter para WEBP antes do upload
+        const webpFile = await convertToWebP(updateData.image);
+        
+        // Log do tamanho final para monitoramento
+        const sizeMB = webpFile.size / (1024 * 1024);
+        console.log(`Tamanho final da imagem WEBP: ${sizeMB.toFixed(2)}MB`);
+
+        // Faz upload da nova imagem (agora .webp)
+        const storagePath = `banners/${Date.now()}_banner.webp`;
+        const storageRef = ref(storage, storagePath);
+        const uploadTask = await uploadBytes(storageRef, webpFile);
+        const newImageUrl = await getDownloadURL(uploadTask.ref);
+        
+        updateFields.image = newImageUrl;
+
+        // Tenta excluir a imagem antiga
+        if (oldImageUrl) {
+          const oldImagePath = extractImagePathFromUrl(oldImageUrl);
+          try {
+            if (oldImagePath) {
+              const oldImageRef = ref(storage, oldImagePath);
+              await deleteObject(oldImageRef);
+              console.log('Imagem antiga excluída com sucesso:', oldImagePath);
+            }
+          } catch (error: any) {
+            // Ignora o erro se o arquivo não existir
+            if (error.code !== 'storage/object-not-found') {
+              console.error('Erro ao excluir imagem antiga:', error);
+            } else {
+              console.log('Imagem antiga já não existe no storage:', oldImagePath);
+            }
+          }
+        }
+      }
+    }
+
+    // Atualiza os campos fornecidos
+    if (updateData.title !== undefined) {
+      updateFields.title = updateData.title;
+    }
+
+    if (updateData.subcategoryId !== undefined) {
+      updateFields.subcategoryId = updateData.subcategoryId;
+    }
+
+    if (updateData.isActive !== undefined) {
+      updateFields.isActive = updateData.isActive;
+    }
+
+    await updateDoc(bannerRef, updateFields);
+    console.log('Banner atualizado com sucesso');
+  } catch (error: any) {
+    console.error('Erro ao atualizar banner:', error);
+    throw new Error(`Erro ao atualizar banner: ${error.message}`);
   }
 };
 

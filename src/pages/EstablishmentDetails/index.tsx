@@ -491,21 +491,52 @@ const EstablishmentDetails = () => {
   };
 
   // Funções para calcular estatísticas dos pedidos
+  const normalizeStatus = (status: string): string => {
+    if (!status) return '';
+    const normalized = status.toLowerCase().trim();
+    
+    // Mapear variações para valores canônicos
+    if (normalized === 'delivered' || normalized === 'entregue' || normalized === 'delivere') {
+      return 'delivered';
+    }
+    if (normalized === 'cancelled' || normalized === 'canceled' || normalized === 'cancelado') {
+      return 'cancelled';
+    }
+    if (normalized === 'pending' || normalized === 'pendente' || normalized === 'not_delivered' || normalized === 'não entregue') {
+      return 'pending';
+    }
+    
+    return normalized;
+  };
+
   const getOrderStatusText = (status: string) => {
+    const normalized = normalizeStatus(status);
     const statusMap: { [key: string]: string } = {
       'not_delivered': 'Não Entregue',
+      'pending': 'Não Entregue',
       'delivered': 'Entregue',
-      'cancelled': 'Cancelado'
+      'cancelled': 'Cancelado',
+      'canceled': 'Cancelado'
     };
-    return statusMap[status] || status;
+    return statusMap[normalized] || status;
   };
 
   const calculateOrderStats = () => {
-    const notDelivered = orders.filter(o => o.status !== 'DELIVERED' && o.status !== 'CANCELLED').length;
-    const delivered = orders.filter(o => o.status === 'DELIVERED').length;
-    const cancelled = orders.filter(o => o.status === 'CANCELLED').length;
+    // Normalizar status antes de comparar
+    const delivered = orders.filter(o => {
+      const normalized = normalizeStatus(o.status);
+      return normalized === 'delivered';
+    }).length;
+    
+    const cancelled = orders.filter(o => {
+      const normalized = normalizeStatus(o.status);
+      return normalized === 'cancelled';
+    }).length;
+    
+    const notDelivered = orders.length - delivered - cancelled;
+    
     const totalRevenue = orders
-      .filter(o => o.status === 'DELIVERED')
+      .filter(o => normalizeStatus(o.status) === 'delivered')
       .reduce((sum, order) => sum + getOrderTotal(order), 0);
     
     const stats = {
@@ -560,10 +591,11 @@ const EstablishmentDetails = () => {
         
         monthlyData[monthKey].total += 1;
         
-        if (order.status === 'DELIVERED') {
+        const normalizedStatus = normalizeStatus(order.status);
+        if (normalizedStatus === 'delivered') {
           monthlyData[monthKey].delivered += 1;
           monthlyData[monthKey].revenue += getOrderTotal(order);
-        } else if (order.status === 'CANCELLED') {
+        } else if (normalizedStatus === 'cancelled') {
           monthlyData[monthKey].cancelled += 1;
         }
       }
@@ -614,10 +646,11 @@ const EstablishmentDetails = () => {
         
         monthlyData[monthKey].total += 1;
         
-        if (order.status === 'DELIVERED') {
+        const normalizedStatus = normalizeStatus(order.status);
+        if (normalizedStatus === 'delivered') {
           monthlyData[monthKey].delivered += 1;
           monthlyData[monthKey].revenue += getOrderTotal(order);
-        } else if (order.status === 'CANCELLED') {
+        } else if (normalizedStatus === 'cancelled') {
           monthlyData[monthKey].cancelled += 1;
         } else {
           monthlyData[monthKey].notDelivered += 1;
@@ -894,50 +927,35 @@ const EstablishmentDetails = () => {
             </div>
           )}
           
-          <div className="stats-cards">
-            <div className="stat-card">
-              <div className="stat-icon total">📦</div>
-              <div className="stat-info">
-                <span className="stat-label">Total de Pedidos</span>
-                <span className="stat-value">{calculateOrderStats().total}</span>
-              </div>
+          <div className="orders-status-grid">
+            <div className="order-status-card">
+              <h3>📦 Total de Pedidos</h3>
+              <p className="count">{calculateOrderStats().total}</p>
             </div>
-            <div className="stat-card">
-              <div className="stat-icon delivered">✅</div>
-              <div className="stat-info">
-                <span className="stat-label">Entregues</span>
-                <span className="stat-value">{calculateOrderStats().delivered}</span>
-                <span className="stat-sublabel">{calculateOrderStats().deliveryRate.toFixed(1)}% dos pedidos</span>
-              </div>
+            <div className="order-status-card success">
+              <h3>✅ Entregues</h3>
+              <p className="count">{calculateOrderStats().delivered}</p>
+              <p className="percentage">{calculateOrderStats().deliveryRate.toFixed(1)}% do total</p>
             </div>
-            <div className="stat-card">
-              <div className="stat-icon pending">⏳</div>
-              <div className="stat-info">
-                <span className="stat-label">Não Entregues</span>
-                <span className="stat-value">{calculateOrderStats().notDelivered}</span>
-              </div>
+            <div className="order-status-card warning">
+              <h3>⏳ Não Entregues</h3>
+              <p className="count">{calculateOrderStats().notDelivered}</p>
+              <p className="percentage">
+                {orders.length > 0 ? ((calculateOrderStats().notDelivered / orders.length) * 100).toFixed(1) : '0.0'}% do total
+              </p>
             </div>
-            <div className="stat-card">
-              <div className="stat-icon cancelled">❌</div>
-              <div className="stat-info">
-                <span className="stat-label">Cancelados</span>
-                <span className="stat-value">{calculateOrderStats().cancelled}</span>
-                <span className="stat-sublabel">{calculateOrderStats().cancelRate.toFixed(1)}% dos pedidos</span>
-              </div>
+            <div className="order-status-card cancelled">
+              <h3>❌ Cancelados</h3>
+              <p className="count">{calculateOrderStats().cancelled}</p>
+              <p className="percentage">{calculateOrderStats().cancelRate.toFixed(1)}% do total</p>
             </div>
-            <div className="stat-card">
-              <div className="stat-icon revenue">💰</div>
-              <div className="stat-info">
-                <span className="stat-label">Receita Total</span>
-                <span className="stat-value">{formatCurrency(calculateOrderStats().totalRevenue)}</span>
-              </div>
+            <div className="order-status-card">
+              <h3>💰 Receita Total</h3>
+              <p className="count">{formatCurrency(calculateOrderStats().totalRevenue)}</p>
             </div>
-            <div className="stat-card">
-              <div className="stat-icon ticket">🎫</div>
-              <div className="stat-info">
-                <span className="stat-label">Ticket Médio</span>
-                <span className="stat-value">{formatCurrency(calculateOrderStats().avgTicket)}</span>
-              </div>
+            <div className="order-status-card">
+              <h3>🎫 Ticket Médio</h3>
+              <p className="count">{formatCurrency(calculateOrderStats().avgTicket)}</p>
             </div>
           </div>
         </section>
@@ -1069,29 +1087,6 @@ const EstablishmentDetails = () => {
             </section>
 
             <section className="info-section">
-              <h2>Resumo Geral dos Pedidos</h2>
-              <div className="orders-status-grid">
-                <div className="order-status-card success">
-                  <h3>✅ Entregues</h3>
-                  <p className="count">{calculateOrderStats().delivered}</p>
-                  <p className="percentage">{calculateOrderStats().deliveryRate.toFixed(1)}% do total</p>
-                </div>
-                <div className="order-status-card warning">
-                  <h3>⏳ Não Entregues</h3>
-                  <p className="count">{calculateOrderStats().notDelivered}</p>
-                  <p className="percentage">
-                    {((calculateOrderStats().notDelivered / orders.length) * 100).toFixed(1)}% do total
-                  </p>
-                </div>
-                <div className="order-status-card cancelled">
-                  <h3>❌ Cancelados</h3>
-                  <p className="count">{calculateOrderStats().cancelled}</p>
-                  <p className="percentage">{calculateOrderStats().cancelRate.toFixed(1)}% do total</p>
-                </div>
-              </div>
-            </section>
-
-            <section className="info-section">
               <h2>Últimos Pedidos</h2>
               <div className="orders-table">
                 <table>
@@ -1137,7 +1132,11 @@ const EstablishmentDetails = () => {
             <div className="info-item">
               <span className="label">Data de Cadastro</span>
               <span className="value">
-                {new Date(establishment.createdAt.seconds * 1000).toLocaleDateString('pt-BR')}
+                {establishment.createdAt && establishment.createdAt.seconds 
+                  ? new Date(establishment.createdAt.seconds * 1000).toLocaleDateString('pt-BR')
+                  : establishment.createdAt && establishment.createdAt.toDate
+                  ? establishment.createdAt.toDate().toLocaleDateString('pt-BR')
+                  : 'Data não disponível'}
               </span>
             </div>
             <div className="info-item">

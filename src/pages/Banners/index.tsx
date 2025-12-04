@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getMainCategories, Category, getSubcategories } from '../../services/categoryServices';
-import { createBanner, getAllBanners, deleteBanner, Banner } from '../../services/bannerServices';
+import { createBanner, getAllBanners, deleteBanner, updateBanner, Banner } from '../../services/bannerServices';
 import { getAuth } from 'firebase/auth';
 import { getImageInfo, shouldCompressImage } from '../../utils/imageCompression';
 import './styles.css';
@@ -22,6 +22,7 @@ const Banners = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingBanner, setEditingBanner] = useState<Banner | null>(null);
   const [newBanner, setNewBanner] = useState({
     title: '',
     mainCategoryId: '',
@@ -63,6 +64,14 @@ const Banners = () => {
       setSubcategories([]);
     }
   }, [newBanner.mainCategoryId]);
+
+  // Carregar subcategorias quando entrar em modo de edição
+  useEffect(() => {
+    if (editingBanner && newBanner.mainCategoryId) {
+      loadSubcategories(newBanner.mainCategoryId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingBanner]);
 
   const loadBanners = async () => {
     try {
@@ -127,28 +136,64 @@ const Banners = () => {
         throw new Error('Você precisa estar autenticado para criar banners');
       }
 
-      if (!newBanner.image) {
-        throw new Error('Selecione uma imagem para o banner');
-      }
+      if (editingBanner) {
+        // Modo de edição
+        if (!newBanner.subcategoryId) {
+          throw new Error('Selecione uma subcategoria para o banner');
+        }
 
-      if (!newBanner.subcategoryId) {
-        throw new Error('Selecione uma subcategoria para o banner');
-      }
+        const updateData: any = {
+          title: newBanner.title,
+          subcategoryId: newBanner.subcategoryId,
+        };
 
-      await createBanner({
-        title: newBanner.title,
-        mainCategoryId: newBanner.subcategoryId, // Usar subcategoryId no lugar de mainCategoryId
-        image: newBanner.image
-      });
+        if (newBanner.image) {
+          updateData.image = newBanner.image;
+        }
+
+        await updateBanner(editingBanner.id, updateData);
+      } else {
+        // Modo de criação
+        if (!newBanner.image) {
+          throw new Error('Selecione uma imagem para o banner');
+        }
+
+        if (!newBanner.subcategoryId) {
+          throw new Error('Selecione uma subcategoria para o banner');
+        }
+
+        await createBanner({
+          title: newBanner.title,
+          mainCategoryId: newBanner.subcategoryId, // Usar subcategoryId no lugar de mainCategoryId
+          image: newBanner.image
+        });
+      }
 
       await loadBanners();
       setIsModalOpen(false);
+      setEditingBanner(null);
       setNewBanner({ title: '', mainCategoryId: '', subcategoryId: '', image: null });
       setImageInfo(null);
     } catch (err: any) {
       console.error('Erro completo:', err);
-      setError(err.message || 'Erro ao criar banner');
+      setError(err.message || `Erro ao ${editingBanner ? 'atualizar' : 'criar'} banner`);
     }
+  };
+
+  const handleEditBanner = (banner: Banner) => {
+    // Encontrar a categoria principal através da subcategoria
+    const subcategory = allSubcategories.find(sc => sc.id === banner.subcategoryId);
+    const mainCategoryId = subcategory?.parentCategoryId || '';
+
+    setEditingBanner(banner);
+    setNewBanner({
+      title: banner.title,
+      mainCategoryId: mainCategoryId,
+      subcategoryId: banner.subcategoryId,
+      image: null,
+    });
+    setImageInfo(null);
+    setIsModalOpen(true);
   };
 
   const handleDeleteBanner = async (bannerId: string) => {
@@ -250,12 +295,20 @@ const Banners = () => {
               <span className={`status-badge ${banner.isActive ? 'active' : 'inactive'}`}>
                 {banner.isActive ? 'Ativo' : 'Inativo'}
               </span>
-              <button 
-                onClick={() => handleDeleteBanner(banner.id)}
-                className="delete-button"
-              >
-                Excluir
-              </button>
+              <div className="banner-actions">
+                <button 
+                  onClick={() => handleEditBanner(banner)}
+                  className="edit-button"
+                >
+                  Editar
+                </button>
+                <button 
+                  onClick={() => handleDeleteBanner(banner.id)}
+                  className="delete-button"
+                >
+                  Excluir
+                </button>
+              </div>
             </div>
           </div>
         ))}
@@ -264,7 +317,7 @@ const Banners = () => {
       {isModalOpen && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <h2>Adicionar Banner</h2>
+            <h2>{editingBanner ? 'Editar Banner' : 'Adicionar Banner'}</h2>
             <form onSubmit={handleCreateBanner}>
               <div className="form-group">
                 <label htmlFor="title">Título do Banner</label>
@@ -320,8 +373,15 @@ const Banners = () => {
                   id="image"
                   accept="image/*"
                   onChange={handleImageChange}
-                  required
+                  required={!editingBanner}
                 />
+                {editingBanner && (
+                  <div className="current-image-preview">
+                    <p>Imagem atual:</p>
+                    <img src={editingBanner.image} alt={editingBanner.title} className="preview-image" />
+                    <p className="image-note">Deixe em branco para manter a imagem atual</p>
+                  </div>
+                )}
                 {imageInfo && (
                   <div className="image-info">
                     <div className="image-details">
@@ -345,13 +405,14 @@ const Banners = () => {
               </div>
               <div className="modal-footer">
                 <button type="submit" className="save-button">
-                  Salvar
+                  {editingBanner ? 'Atualizar' : 'Salvar'}
                 </button>
                 <button 
                   type="button" 
                   className="cancel-button"
                   onClick={() => {
                     setIsModalOpen(false);
+                    setEditingBanner(null);
                     setNewBanner({ title: '', mainCategoryId: '', subcategoryId: '', image: null });
                     setImageInfo(null);
                   }}

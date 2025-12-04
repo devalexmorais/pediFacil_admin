@@ -21,11 +21,16 @@ const Establishment = () => {
   const loadSellers = async () => {
     try {
       setLoading(true);
+      setError('');
+      console.log('Carregando estabelecimentos...');
       const sellersData = await getAllSellers();
+      console.log('Estabelecimentos carregados:', sellersData?.length || 0);
       setSellers(sellersData || []);
-    } catch (err) {
-      console.error('Erro detalhado:', err);
-      setError('Erro ao carregar estabelecimentos');
+    } catch (err: any) {
+      console.error('Erro detalhado ao carregar estabelecimentos:', err);
+      const errorMessage = err?.message || 'Erro desconhecido ao carregar estabelecimentos';
+      setError(`Erro ao carregar estabelecimentos: ${errorMessage}`);
+      alert(`Erro ao carregar estabelecimentos: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -192,7 +197,13 @@ const Establishment = () => {
                           {seller.store.isPremium ? 'Premium' : 'Básico'}
                         </span>
                       </td>
-                      <td>{new Date(seller.createdAt.seconds * 1000).toLocaleDateString('pt-BR')}</td>
+                      <td>
+                        {seller.createdAt && seller.createdAt.seconds 
+                          ? new Date(seller.createdAt.seconds * 1000).toLocaleDateString('pt-BR')
+                          : seller.createdAt && seller.createdAt.toDate
+                          ? seller.createdAt.toDate().toLocaleDateString('pt-BR')
+                          : 'Data não disponível'}
+                      </td>
                       <td>
                         <div className="action-buttons">
                           <button
